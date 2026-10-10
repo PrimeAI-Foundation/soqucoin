@@ -213,7 +213,7 @@ SOQUPOOL is the only supported way to mine SOQ at mainnet launch. Support for ot
 |----------|-------------|
 | [INSTALL.md](INSTALL.md) | Build instructions for all platforms |
 | [doc/stagenet-mining-guide.md](doc/stagenet-mining-guide.md) | Stagenet mining & node setup |
-| [doc/node-operators.md](doc/node-operators.md) | Running a node on stagenet now and on mainnet from launch: what to expect on the first day |
+| [doc/node-operators.md](doc/node-operators.md) | Running your own node, step by step: download and check the release, start it, what the first day looks like, and how to confirm you're on the real chain |
 | [contrib/solo-miner/README.md](contrib/solo-miner/README.md) | Solo mining stratum proxy for stagenet and development; not supported on mainnet at launch |
 | [doc/specifications/pat-specification.md](doc/specifications/pat-specification.md) | PAT wire format specification |
 | [Whitepaper](https://soqu.org/whitepaper/soqucoin_whitepaper.pdf) | Technical specification |

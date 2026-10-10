@@ -1,78 +1,231 @@
-# Running a Soqucoin node around mainnet launch
+# Running a Soqucoin node
 
-This page is for operators who run their own node. It says what to expect on each network, in
-order, and what a node cannot do during the first day of mainnet.
+Mainnet starts on **13 October 2026 at 15:00 UTC**. This page walks you through running your own node, from the download to checking that you're on the real chain. If you've never run a node before, start at the top and go in order.
 
-## Stagenet, available now
+You don't need a node to mine on SOQUPOOL or to hold SOQ in SoquShield. You run one to check the chain yourself instead of relying on anyone else's copy. We'd like a lot of you to do exactly that.
 
-Stagenet is the live test network the project's own nodes run today. Use it to prove your build,
-your configuration and your tooling before mainnet.
+## Before anything else: stay safe
 
-```ini
-# soqucoin.conf
-stagenet=1
-server=1
-rpcuser=<choose>
-rpcpassword=<choose>
-```
+Launches attract scammers. Most of what goes wrong for new operators in the first days is somebody offering "help".
 
-A fresh node finds peers through the stagenet seed (`stagenet.soqu.org`), downloads headers, then
-blocks, and reports `initialblockdownload` false once it reaches the tip. On a fast connection the
-first sync takes a few minutes. Stagenet addresses start with `ssq1p` and mainnet addresses with `sq1p`:
-one address type, bech32m witness version 1. Both the 2.5.0 release and the mainnet release (2.5.1) run
-stagenet.
+- Download only from the [GitHub releases page](https://github.com/soqucoin/soqucoin/releases), and check the checksum (step 1 shows how).
+- Nobody on our team will DM you a download link, a config file or a list of peers. If someone does, it's a scam.
+- Don't add `addnode=` or `connect=` lines that anyone gives you. Your node finds the network on its own through the seeds built into it. A stranger's peer list is the easiest way to get you onto a fake chain.
+- Never share a seed phrase or a `wallet.dat` file with anyone, for any reason.
 
-```bash
-soqucoin-cli getblockchaininfo   # chain "stagenet", blocks rising, initialblockdownload false at the tip
-soqucoin-cli getconnectioncount  # above 0 within a minute
-```
+Our official channels are X [@soqucoin](https://x.com/soqucoin), Telegram [t.me/officialsoqucoin](https://t.me/officialsoqucoin) and this page.
 
-## Mainnet, from 13 October 2026, 15:00 UTC
+## What you need
 
-There is no mainnet chain before that hour: the mainnet release refuses any block at height 1 timed
-earlier. Until then a mainnet node shows height 0 and no peers, which is correct.
+| Your computer | What to download |
+|---|---|
+| Ubuntu 22.04 (x64 or ARM64) | The ready-made Linux build |
+| Ubuntu 24.04 or another Linux | Build from source ([see below](#building-from-source)). The ready-made Linux build is made for Ubuntu 22.04 and won't load on 24.04 |
+| macOS 15 (Sequoia) or newer, Apple silicon or Intel | The ready-made macOS build |
+| 64-bit Windows | The ready-made Windows build |
 
-Run the mainnet release, 2.5.1, on a fresh data directory. The 2.5.0 release cannot follow mainnet
-past the genesis block: block 1 carries the genesis migration that only 2.5.1 enforces, so a 2.5.0
-node rejects it.
+The chain starts empty on 13 October, so it won't use much for a long time. Our own stagenet nodes run in about 120 MB of memory. A machine with 2 GB of RAM and 20 GB of free disk has plenty of room, and that includes a small cloud server.
 
-```ini
-# soqucoin.conf
-server=1
-rpcuser=<choose>
-rpcpassword=<choose>
-```
+The current release is **2.5.1**. Mainnet needs it: block 1 carries the genesis migration, and only 2.5.1 knows the rule for it, so an older release rejects block 1 and stops there.
 
-**The first day.** Public peering opens at least a day after block 1 and not before the chain is
-576 blocks deep, two finality horizons: a node past its initial sync refuses any reorganisation 288
-blocks deep or deeper, so from then on the project's nodes hold the start as final. Until the opening the
-project's nodes accept no outside connections: your mainnet node shows 0 connections and stays at
-height 0. This is expected. Leave it running or start it after the opening. A node syncing from
-scratch has no history of its own to hold, so at the opening we publish the hash of block 1 and
-the hash at the opening height; check yours against both:
+## Step 1: Download and check it
+
+### Linux (Ubuntu 22.04)
+
+On an ARM64 machine, swap `linux-x64` for `linux-arm64` everywhere it appears below.
 
 ```bash
-soqucoin-cli getblockhash 1
-soqucoin-cli getblockhash <opening height>   # the height is published beside its hash
+mkdir -p ~/soqucoin && cd ~/soqucoin
+curl -LO https://github.com/soqucoin/soqucoin/releases/download/v2.5.1/soqucoin-v2.5.1-linux-x64.tar.gz
+curl -LO https://github.com/soqucoin/soqucoin/releases/download/v2.5.1/SHA256SUMS
+sha256sum --ignore-missing -c SHA256SUMS
 ```
 
-A node whose hashes differ from the published ones is on the wrong chain: stop it, remove the data
-directory, and start again on the current release.
+Look for `soqucoin-v2.5.1-linux-x64.tar.gz: OK`. Anything else means a bad download: delete the file and download it again. Don't run it.
 
-**Releases in the first weeks.** A release after launch may add checkpoints so that a node syncing
-from scratch follows the launched chain. Stay on the current release; the release notes say when an
-update is needed to stay in sync.
+Then unpack it and install the libraries it needs:
 
-## What is not supported at launch
+```bash
+tar xzf soqucoin-v2.5.1-linux-x64.tar.gz
+sudo apt update
+sudo apt install libboost-filesystem1.74.0 libboost-program-options1.74.0 libboost-thread1.74.0 \
+  libboost-chrono1.74.0 libdb5.3++ libevent-2.1-7 libevent-pthreads-2.1-7 libminiupnpc17 libzmq5 \
+  libssl3 libunivalue0
+```
 
-- Mining: SOQUPOOL is the only supported way to mine SOQ at mainnet launch. A node does not need
-  mining enabled, and `getblocktemplate` on an ordinary node returns an error by design.
-- Peering with the project's nodes during the first day (above).
+That leaves two programs in `~/soqucoin`: `soqucoind` (the node) and `soqucoin-cli` (the tool you use to talk to it).
+
+### macOS
+
+On an Intel Mac, swap `macos-arm64` for `macos-x64` in both places.
+
+```bash
+mkdir -p ~/soqucoin && cd ~/soqucoin
+curl -LO https://github.com/soqucoin/soqucoin/releases/download/v2.5.1/soqucoin-v2.5.1-macos-arm64.tar.gz
+curl -LO https://github.com/soqucoin/soqucoin/releases/download/v2.5.1/SHA256SUMS
+shasum -a 256 --ignore-missing -c SHA256SUMS
+tar xzf soqucoin-v2.5.1-macos-arm64.tar.gz
+```
+
+Same check: look for `OK`. If you downloaded with a browser instead of `curl`, macOS will block the programs because they aren't notarized by Apple. Clear that with:
+
+```bash
+xattr -d com.apple.quarantine soqucoind soqucoin-cli
+```
+
+### Windows
+
+Download `soqucoin-v2.5.1-windows-x64.zip` and `SHA256SUMS` from the [release page](https://github.com/soqucoin/soqucoin/releases/tag/v2.5.1). In PowerShell, in the folder you saved them to:
+
+```powershell
+Get-FileHash .\soqucoin-v2.5.1-windows-x64.zip
+Select-String windows SHA256SUMS
+```
+
+The two long hashes have to match (PowerShell prints its hash in capitals; that's fine). Unzip it to a folder such as `C:\soqucoin`. In the steps below, use `.\soqucoind.exe` and `.\soqucoin-cli.exe` from that folder in place of `./soqucoind` and `./soqucoin-cli`, and run the node in its own window without `-daemon`.
+
+## Step 2: Start it
+
+No config file is needed. From the folder with the programs:
+
+```bash
+./soqucoind -daemon
+```
+
+Give it about ten seconds, then:
+
+```bash
+./soqucoin-cli getblockchaininfo
+```
+
+To stop it later: `./soqucoin-cli stop`.
+
+Check you're running the right release:
+
+```bash
+./soqucoind -version
+```
+
+It should print `Soqucoin Core Daemon version v2.5.1.0-2a3dbb3` (or just `v2.5.1` if you built it yourself).
+
+The node keeps its data and its log (`debug.log`) here:
+
+| System | Data folder |
+|---|---|
+| Linux | `~/.soqucoin` |
+| macOS | `~/Library/Application Support/Soqucoin` |
+| Windows | `%APPDATA%\Soqucoin` |
+
+Two things catch people who've run a node before:
+
+- **You ran stagenet.** If `soqucoin.conf` in the data folder has a `stagenet=1` line, your node is on stagenet. `getblockchaininfo` tells you which one: `"chain": "main"` is mainnet and `"chain": "stagenet"` is stagenet. Delete that line and restart.
+- **You ran a mainnet node with 2.5.0 or older.** Stop it, rename the data folder (for example to `Soqucoin.old`) and start 2.5.1 fresh. Renaming instead of deleting keeps any wallet that was in it.
+
+## Step 3: What normal looks like
+
+Two commands tell you everything:
+
+```bash
+./soqucoin-cli getblockcount
+./soqucoin-cli getconnectioncount
+```
+
+| When | Blocks | Connections | What it means |
+|---|---|---|---|
+| Before 13 Oct, 15:00 UTC | 0 | 0 | There's no mainnet chain yet. Your node is fine |
+| The first day after launch | 0 | 0 | Still fine. Public peering hasn't opened yet |
+| After the opening | climbing | more than 0 | Your node is catching up |
+| Caught up | about one new block a minute | more than 0 | Done. Now check the hashes (step 4) |
+
+Yes, a node showing 0 and 0 for a full day is normal. Our nodes accept no outside connections for at least the first day after block 1, and the opening doesn't happen before the chain is 576 blocks deep. By then, a node that's already synced won't accept a rewrite of the chain 288 blocks deep or more, so the start of the chain is settled before anyone else downloads it. Leave your node running, or start it after the opening. Either way works.
+
+Opening port 33388 on your router or firewall is optional. Your node syncs fine without it. Opening it lets other nodes connect to yours once peering is open.
+
+## Step 4: Check you're on the real chain
+
+A node syncing for the first time has nothing of its own to compare against. So at the opening, we publish two block hashes: block 1, and the block at the opening height. Check yours against both:
+
+```bash
+./soqucoin-cli getblockhash 1
+./soqucoin-cli getblockhash <opening height>
+```
+
+| Block | Hash |
+|---|---|
+| 1 | Not published yet |
+| Opening height | Not published yet |
+
+We'll post them here, on X and in the Telegram channel at the same time. All three should agree. If they don't, trust none of them and ask in the Telegram channel.
+
+If your hashes don't match, you're on the wrong chain. Stop the node, rename the data folder, and start again on the current release.
+
+## Building from source
+
+Use this on Ubuntu 24.04 or any Linux where the ready-made build won't load. These steps are for Ubuntu 24.04:
+
+```bash
+sudo apt update
+sudo apt install git build-essential libtool autotools-dev automake pkg-config bsdmainutils python3 \
+  libssl-dev libevent-dev libboost-all-dev libminiupnpc-dev libzmq3-dev libsqlite3-dev libdb++-dev
+git clone --depth 1 --branch v2.5.1 https://github.com/soqucoin/soqucoin.git
+cd soqucoin
+./autogen.sh
+./configure --without-gui --disable-tests --disable-bench
+make -j"$(nproc)"
+```
+
+The build took under three minutes on 8 cores in our test. A smaller machine takes longer, and if it has less than 4 GB of memory, use `make -j1` so the build doesn't run out of memory. The programs end up in `src/`, so run `src/soqucoind -daemon` and `src/soqucoin-cli ...` from the `soqucoin` folder, then carry on from step 2.
+
+## Mining
+
+SOQUPOOL is the only supported way to mine SOQ at mainnet launch. Support for other pools and for solo mining will be announced when it is ready.
+
+Your node doesn't need mining turned on. On a regular node, `getblocktemplate` returns an error. That's on purpose.
 
 ## The wallet
 
-The node's built-in wallet works on every network. If you only validate and relay, set
-`disablewallet=1`: it removes the wallet from startup and from the RPC surface. SoquShield and the
-SDK give you addresses and signing without the node wallet. If startup stays on `Loading wallet...`
-for more than a minute, keep `debug.log` and tell us which release asset you run and whether the
-data directory held a `wallet.dat` from an earlier release.
+The node's built-in wallet works on mainnet and stagenet. If you only need to validate and relay blocks, add `disablewallet=1` to `soqucoin.conf` in the data folder. That takes the wallet out of startup and out of the RPC commands. SoquShield and the SDK give you addresses and signing without the node wallet.
+
+## When something goes wrong
+
+**`error while loading shared libraries: libunivalue.so.0`** (or another `.so` file)
+On Ubuntu 22.04, run the `apt install` line from step 1 again. On Ubuntu 24.04 or another Linux, the ready-made build won't work there. [Build from source](#building-from-source).
+
+**`error: Could not locate RPC credentials. No authentication cookie could be found...`**
+The node isn't running, or it's still starting. Wait a few seconds and try again. If it keeps happening, look at the end of `debug.log` in the data folder. Run `soqucoin-cli` as the same user that started the node.
+
+**`error: incorrect rpcuser or rpcpassword`**
+You've put `rpcuser` or `rpcpassword` in `soqucoin.conf` and something doesn't line up. Unless you need them, remove both lines and restart the node.
+
+**macOS says it can't verify the developer, or won't open the program**
+Run the `xattr` line from step 1. If macOS says the program needs a newer version, you need macOS 15 or later.
+
+**0 blocks and 0 connections**
+Normal before launch, and normal for at least the first day after it. See step 3.
+
+**`"chain": "stagenet"`**
+Remove `stagenet=1` from `soqucoin.conf` and restart.
+
+**`getblocktemplate` returns an error**
+By design. See Mining.
+
+**Startup sits on `Loading wallet...` for more than a minute**
+Keep `debug.log` and tell us in the Telegram channel which release file you downloaded and whether the data folder had a `wallet.dat` from an earlier release.
+
+## Updates in the first weeks
+
+A release after launch may add checkpoints so that a new node syncing from scratch follows the launched chain. Stay on the current release. The release notes will say when you need an update to stay in sync.
+
+## Practicing on stagenet
+
+Stagenet is the live test network our own nodes run today. It's a good place to prove your setup before mainnet. Put this line in `soqucoin.conf` in the data folder:
+
+```ini
+stagenet=1
+```
+
+Stagenet keeps its data in a `stagenet` folder inside the data folder, and finds peers through `stagenet.soqu.org`. A fresh node syncs in a few minutes on a fast connection. Stagenet addresses start with `ssq1p` and mainnet addresses start with `sq1p`. When you're done practicing, take the `stagenet=1` line back out.
+
+## Getting help
+
+Ask in the Telegram channel ([t.me/officialsoqucoin](https://t.me/officialsoqucoin)) or [open an issue on GitHub](https://github.com/soqucoin/soqucoin/issues). Include your operating system, which release file you downloaded, and the last 50 lines of `debug.log`. Never post your wallet file, a seed phrase or a private key.
