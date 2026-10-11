@@ -186,6 +186,8 @@ Your node doesn't need mining turned on. On a regular node, `getblocktemplate` r
 
 The node's built-in wallet works on mainnet and stagenet. If you only need to validate and relay blocks, add `disablewallet=1` to `soqucoin.conf` in the data folder. That takes the wallet out of startup and out of the RPC commands. SoquShield and the SDK give you addresses and signing without the node wallet.
 
+Only the Linux x64 and Windows builds come with the wallet. The Linux ARM64 and macOS builds are made without it, so wallet commands like `getnewaddress` answer `error code: -32601` there. If you need the node wallet on one of those machines, build from source. The wallet is part of a source build. The [source build steps](#building-from-source) on this page cover Linux, and [INSTALL.md](../INSTALL.md) points to the macOS build steps.
+
 ## When something goes wrong
 
 **`error while loading shared libraries: libunivalue.so.0`** (or another `.so` file)
