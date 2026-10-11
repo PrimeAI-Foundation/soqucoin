@@ -8,11 +8,12 @@ and how to build from source.
 
 ## Release downloads
 
-Every release on the [release page](https://github.com/soqucoin/soqucoin/releases)
+The current release, 2.5.1, on the [release page](https://github.com/soqucoin/soqucoin/releases)
 ships five archives and a `SHA256SUMS` file. Each archive holds two programs at
 the top level: `soqucoind`, the node, and `soqucoin-cli`, the command line tool
 you use to talk to it (`.exe` on Windows). There's no graphical wallet app and
-no 32-bit build.
+no 32-bit build. Older releases carried other archives as well, so check the
+asset list on the release you download.
 
 | Archive | System | Node wallet |
 | :--- | :--- | :--- |
@@ -110,7 +111,7 @@ Configure checks for these minimums:
 
 - Boost 1.60.0 or later
 - OpenSSL
-- A C++14 compiler. C++17 is optional, with `--enable-cxx17`.
+- A C++14 compiler. C++17 is optional, with `--enable-c++17`.
 
 ### Ubuntu 24.04
 
