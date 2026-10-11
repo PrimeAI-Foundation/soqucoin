@@ -137,7 +137,7 @@ Two commands tell you everything:
 | After the opening | climbing | more than 0 | Your node is catching up |
 | Caught up | about one new block a minute | more than 0 | Done. Now check the hashes (step 4) |
 
-Yes, a node showing 0 and 0 for a full day is normal. Our nodes accept no outside connections for at least the first day after block 1, and the opening doesn't happen before the chain is 576 blocks deep. By then, a node that's already synced won't accept a rewrite of the chain 288 blocks deep or more, so the start of the chain is settled before anyone else downloads it. Leave your node running, or start it after the opening. Either way works.
+Yes, a node showing 0 and 0 for a full day is normal. Our nodes accept no outside connections for at least the first day after block 1, and the opening doesn't happen before the chain is 576 blocks deep. By then our own nodes won't accept a rewrite of the chain 288 blocks deep or more. That protection only covers a node that's already synced, though. A node downloading the chain for the first time doesn't have it yet, which is why step 4 has you check two hashes. Leave your node running, or start it after the opening. Either way works.
 
 Opening port 33388 on your router or firewall is optional. Your node syncs fine without it. Opening it lets other nodes connect to yours once peering is open.
 
@@ -157,7 +157,7 @@ A node syncing for the first time has nothing of its own to compare against. So 
 
 We'll post them here, on X and in the Telegram channel at the same time. All three should agree. If they don't, trust none of them and ask in the Telegram channel.
 
-If your hashes don't match, you're on the wrong chain. Stop the node, rename the data folder, and start again on the current release.
+If either hash doesn't match, your node is on the wrong chain. Stop it, and don't send or accept anything with it. Syncing again from scratch won't fix it by itself, because the node can pick up the same wrong chain from the same peers. Check the release page and our official channels for recovery steps (usually a new release with a checkpoint for the right chain) and follow those.
 
 ## Building from source
 
