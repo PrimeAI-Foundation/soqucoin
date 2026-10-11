@@ -1,164 +1,188 @@
 # Installing Soqucoin Core
 
-### Pre-compiled binaries
+If you're setting up a node for the first time, start with the
+[node operators guide](doc/node-operators.md). It walks through download, first
+start and the checks that tell you the node is on the right chain. This page is
+the reference behind it: which release file fits your system, how to check it,
+and how to build from source.
 
-The easiest way to install the latest version of the Soqucoin Core software is
-to download the latest precompiled binaries for your platform from the
-[release page](https://github.com/soqucoin/soqucoin/releases). Currently,
-binaries are released for the following platforms:
+## Release downloads
 
-- Windows, 64-bit and 32-bit
-- Linux, 64-bit and 32-bit
-- MacOS, Intel 64-bit
-- ARM, 64-bit and 32-bit Linux
+The current release, 2.5.1, on the [release page](https://github.com/soqucoin/soqucoin/releases)
+ships five archives and a `SHA256SUMS` file. Each archive holds two programs at
+the top level: `soqucoind`, the node, and `soqucoin-cli`, the command line tool
+you use to talk to it (`.exe` on Windows). There's no graphical wallet app and
+no 32-bit build. Older releases carried other archives as well, so check the
+asset list on the release you download.
 
-#### Minimum Operating System versions
+| Archive | System | Node wallet |
+| :--- | :--- | :--- |
+| `linux-x64.tar.gz` | Ubuntu 22.04, x86-64 | Included |
+| `linux-arm64.tar.gz` | Ubuntu 22.04, 64-bit ARM | Built without it |
+| `macos-arm64.tar.gz` | macOS 15 or later, Apple silicon | Built without it |
+| `macos-x64.tar.gz` | macOS 15 or later, Intel | Built without it |
+| `windows-x64.zip` | 64-bit Windows | Included |
 
-The following versions have been verified to be supported for pre-compiled
-binaries:
-
-| OS/Distro (arch)  | Minimum version      |
-| :---------------- | :------------------- |
-| Windows (x86)     | Vista                |
-| MacOS (x86)       | Mountain Lion (10.8) |
-| Ubuntu (x86)      | Trusty (16.04)       |
-| Ubuntu (ARM)      | Focal (20.04)        |
-| Debian (x86)      | Jessie (8)           |
-| Debian (ARM)      | Stretch (9)          |
-| CentOS (x86)      | 7                    |
-| Fedora (x86)      | 28                   |
-
-It is possible to run Soqucoin Core on other systems and lower versions when
-compiling from source, see the chapters below for more information.
-
-#### Checking binary integrity
-
-Release binaries are created and verified by multiple independent people to
-ensure honest and malware-free releases. The provided binaries on this
-repository come with a `SHA256SUMS.asc` file; a pgp-signed list of each checksum
-of the released archives. This is only provided to enable people to quickly
-check the integrity of a downloaded release binary. You can find the pgp key
-used to sign the file among those listed in `contrib/gitian-keys`.
-
-To verify the integrity of the `SHA256SUMS.asc` file, you need `gpg`, after
-which you can simply run
+**Linux.** Both Linux builds are made on Ubuntu 22.04 and load shared
+libraries from it. Install them with:
 
 ```bash
-gpg --verify SHA256SUMS.asc
+sudo apt install libboost-filesystem1.74.0 libboost-program-options1.74.0 libboost-thread1.74.0 \
+  libboost-chrono1.74.0 libdb5.3++ libevent-2.1-7 libevent-pthreads-2.1-7 libminiupnpc17 libzmq5 \
+  libssl3 libunivalue0
 ```
 
-And then, verify the binary with the checksum app provided by your OS, eg:
+The Linux builds won't start on Ubuntu 24.04, because `libunivalue.so.0` isn't
+packaged there. On 24.04 or any other distribution, build from source.
+
+**macOS.** The macOS builds need macOS 15 (Sequoia) or later. They aren't
+notarized by Apple, so if you downloaded them with a browser, macOS blocks the
+first run. Clear that from the folder you unpacked into:
 
 ```bash
-grep x86_64-linux SHA256SUMS.asc | sha256sum -c
+xattr -d com.apple.quarantine soqucoind soqucoin-cli
 ```
 
-Full attestations to release binary integrity can be found at the
-[`gitian.sigs` repository on GitHub](https://github.com/soqucoin/gitian.sigs)
-and everyone can run the full release build process themselves to verify the
-output; resulting binaries are fully deterministic. Please refer to
-[the gitian building documentation](doc/gitian-building.md) for more
-information regarding that process.
+**Windows.** Unzip anywhere, for example `C:\soqucoin`, and run the programs
+from PowerShell in that folder.
 
-### Post-Quantum Wallet Setup
+If you need the node wallet on an ARM Linux machine or a Mac, build from source.
+The wallet is part of a source build unless you configure with
+`--disable-wallet`.
 
-Soqucoin uses Dilithium (ML-DSA-44) keys. Legacy ECDSA wallets are **not
-supported**.
+### Checking your download
 
-Note that this tree is Bitcoin Core 0.13-era in its wallet RPC surface: there is
-no `createwallet` and no `-rpcwallet` argument. A single wallet is loaded from
-the data directory, and `-disablewallet` turns it off entirely.
+`SHA256SUMS` lists the SHA-256 hash of every archive in the release. Check the
+archive you downloaded against it before you run anything.
 
-1.  **Get a Dilithium address** (creates one in the loaded wallet):
-    ```bash
-    ./src/soqucoin-cli getnewaddress
-    ```
-    Mainnet addresses start with `sq1`. Stagenet uses `ssq1`.
+On Linux:
 
-2.  **Mining**:
-    Miners must use `generatetoaddress` with a valid Dilithium address.
-    ```bash
-    ./src/soqucoin-cli generatetoaddress 1 $(./src/soqucoin-cli getnewaddress)
-    ```
-
-### Building from Source
-
-**Dependencies** (these are the floors `configure.ac` actually enforces, not
-aspirational versions):
-
-*   Boost 1.60.0 or later
-*   OpenSSL
-*   A C++14 compiler. C++17 is supported but optional, via `--enable-cxx17`.
-
-**Build**:
 ```bash
+sha256sum --ignore-missing -c SHA256SUMS
+```
+
+On macOS:
+
+```bash
+shasum -a 256 --ignore-missing -c SHA256SUMS
+```
+
+Both print `OK` next to each archive that matches. On Windows, in PowerShell:
+
+```powershell
+Get-FileHash .\soqucoin-v2.5.1-windows-x64.zip
+Select-String windows SHA256SUMS
+```
+
+The two hashes have to match. PowerShell prints its hash in capitals, which
+doesn't matter. Use the version number of the release you downloaded in place
+of `v2.5.1`.
+
+`SHA256SUMS` isn't signed. A match tells you the archive arrived intact and is
+the same file that's on the release page. The archives and `SHA256SUMS` are
+built from the tagged commit by the [release workflow](.github/workflows/release.yml)
+on GitHub Actions, and the run for each tag is public in the repository's
+Actions tab. If you'd rather not trust a prebuilt binary at all, build from
+source.
+
+## The node wallet
+
+Soqucoin keys are ML-DSA-44 (Dilithium). ECDSA keys and wallets from other
+chains aren't supported.
+
+The wallet RPC surface dates from Bitcoin Core 0.13: there's no `createwallet`
+and no `-rpcwallet` argument. The node loads one wallet from its data
+directory, and `-disablewallet` turns it off.
+
+To get an address:
+
+```bash
+soqucoin-cli getnewaddress
+```
+
+Mainnet addresses start with `sq1`. Stagenet addresses start with `ssq1`.
+
+`generatetoaddress` mines blocks on the node's own CPU. It's meant for regtest,
+where blocks solve instantly, and isn't a way to mine on mainnet.
+
+## Building from source
+
+Configure checks for these minimums:
+
+- Boost 1.60.0 or later
+- OpenSSL
+- A C++14 compiler. C++17 is optional, with `--enable-c++17`.
+
+### Ubuntu 24.04
+
+These steps are tested on a fresh Ubuntu 24.04:
+
+```bash
+sudo apt install git build-essential libtool autotools-dev automake pkg-config bsdmainutils python3 \
+  libssl-dev libevent-dev libboost-all-dev libminiupnpc-dev libzmq3-dev libsqlite3-dev libdb++-dev
+git clone https://github.com/soqucoin/soqucoin.git
+cd soqucoin
+git checkout v2.5.1
 ./autogen.sh
-./configure --without-gui
-make -j$(nproc)
+./configure --without-gui --disable-tests --disable-bench
+make -j"$(nproc)"
 ```
 
-Add `--enable-fuzz` only if you intend to build the fuzz targets.
+Use the tag of the current release in place of `v2.5.1`. The build takes a few
+minutes on a modern machine. On a machine with less than 4 GB of memory, use
+`make -j1` so it doesn't run out. The programs end up in `src/`.
 
-### Compiling using packaged dependencies
+Leave out `--disable-tests` if you plan to run the unit tests. Add
+`--enable-fuzz` only to build the fuzz targets.
 
-It is possible to build your own copy of Soqucoin Core with the exact, tested,
-dependencies, as used for the binary releases, by using the
-[depends system](depends/description.md). Please refer to the
-[depends README](depends/README.md) for instructions to build Soqucoin using
-these dependencies.
+### Other systems
 
-### Compiling using system-provided libraries
+The release workflow, [`.github/workflows/release.yml`](.github/workflows/release.yml),
+holds working build steps for Ubuntu 22.04 (x86-64, and cross-compiled for
+64-bit ARM), macOS with Homebrew, and Windows cross-compiled from Linux with
+MinGW-w64. Those are the steps every release archive is built with.
 
-  The following are developer notes on how to build Soqucoin on your native
-  platform, using the dependencies as provided by your system's package manager.
-  Before starting, ensure your system is updated and has the latest security patches.
-  Outdated libraries can render the entire system, including Soqucoin Core, vulnerable.
-  They are not complete guides, but include notes on the necessary libraries,
-  compile flags, etc.
+To build with the exact dependency versions the depends system pins, see
+[depends/README.md](depends/README.md) and
+[depends/description.md](depends/description.md).
 
-  - [Unix Build Notes](doc/build-unix.md)
-  - [Windows Build Notes](doc/build-windows.md)
-  - [macOS Build Notes](doc/build-macos.md)
+Before building on any system, bring it up to date with its security patches.
+An outdated library can leave the whole system open, Soqucoin Core included.
 
-### Testing
+## Data directory
 
-Unit tests can be compiled and ran with `make check`. Further details on running
-and extending unit tests can be found in [/src/test/README.md](/src/test/README.md).
+| System | Default data directory |
+| :--- | :--- |
+| Linux | `~/.soqucoin` |
+| macOS | `~/Library/Application Support/Soqucoin` |
+| Windows | `%APPDATA%\Soqucoin` |
 
-There are also [regression and integration tests](/qa) written in Python, that
-are run automatically on the build server. These tests can be run (if the
-[test dependencies](/qa) are installed) with: `qa/pull-tester/rpc-tests.py`
+The node writes `debug.log` there. Stagenet and regtest data go in subfolders
+named `stagenet` and `regtest`.
 
-### Tips and tricks
+## Testing
 
-**compiling for debugging**
+Build with tests enabled, then run the unit tests with `make check`. More on
+running and extending them is in [src/test/README.md](src/test/README.md).
 
-Run `configure` with the `--enable-debug` option, then `make`. Or run `configure` with
-`CXXFLAGS="-g -ggdb -O0"` or whatever debug flags you need.
+The Python regression and integration tests are in [qa/rpc-tests](qa/rpc-tests).
+With their dependencies installed, run them with `qa/pull-tester/rpc-tests.py`.
 
-**debug.log**
+## Tips
 
-If the code is behaving strangely, take a look in the debug.log file in the data directory;
-error and debugging messages are written there.
+**Debug builds.** Run `configure` with `--enable-debug`, then `make`. Or pass
+your own flags, for example `CXXFLAGS="-g -ggdb -O0"`.
 
-The `-debug=...` command-line option controls debugging; running with just `-debug` will turn
-on all categories (and give you a very large debug.log file).
+**debug.log.** If the node behaves strangely, look in `debug.log` in the data
+directory. Errors and debug messages go there. The `-debug=<category>` option
+turns on a category. `-debug` on its own turns on all of them, and the log gets
+very large.
 
-The Qt code routes `qDebug()` output to debug.log under category "qt": run with `-debug=qt`
-to see it.
+**Stagenet and regtest.** `-stagenet` joins the stagenet chain, a rehearsal of
+mainnet. `-regtest` starts a private chain on your machine where you create
+blocks on demand. The tests in `qa/rpc-tests` run in regtest.
 
-**testnet and regtest modes**
-
-Run with the `-testnet` option to run with "play soqucoins" on the test network, if you
-are testing multi-machine code that needs to operate across the internet.
-
-If you are testing something that can run on one machine, run with the `-regtest` option.
-In regression test mode, blocks can be created on-demand; see qa/rpc-tests/ for tests
-that run in `-regtest` mode.
-
-**DEBUG_LOCKORDER**
-
-Soqucoin Core is a multithreaded application, and deadlocks or other multithreading bugs
-can be very difficult to track down. Compiling with `-DDEBUG_LOCKORDER` (`configure
-CXXFLAGS="-DDEBUG_LOCKORDER -g"`) inserts run-time checks to keep track of which locks
-are held, and adds warnings to the debug.log file if inconsistencies are detected.
+**DEBUG_LOCKORDER.** Soqucoin Core is multithreaded, and deadlocks are hard to
+track down. Configuring with `CXXFLAGS="-DDEBUG_LOCKORDER -g"` adds run-time
+checks on the order locks are taken in, and writes a warning to `debug.log` when
+it finds an inconsistency. `--enable-debug` turns it on as well.
