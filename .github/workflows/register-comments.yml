@@ -1,0 +1,52 @@
+name: Register comments
+
+# The writing rules applied to comments and reviews on a pull request, including one posted
+# from the web interface or a phone. The pull request's title, body, commits and file names are
+# linted by the required job in register.yml.
+#
+# This job is advisory and is never made required, and it reports under its own check name so
+# that it cannot satisfy or supersede the required one. The review and review comment events
+# load this workflow from the pull request's merge ref, so a pull request can edit this file;
+# the checkout below still names the default branch, so an unmodified run executes the trusted
+# checker. issue_comment runs from the default branch and reports against it rather than the
+# pull request head, so its verdict appears in the Actions tab and not in the pull request's
+# checks.
+on:
+  issue_comment:
+    types: [created, edited]
+  pull_request_review_comment:
+    types: [created, edited]
+  pull_request_review:
+    types: [submitted, edited]
+
+# Reading is all this check does: the event payload, and nothing from the API on these events.
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  register-comments:
+    # An issue_comment event fires for issues as well as pull requests; only the pull request
+    # case has text this check is about.
+    if: github.event_name != 'issue_comment' || github.event.issue.pull_request != null
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      # The default branch by name. Without a `ref` the review events would check out the
+      # merge ref and run the checker the pull request carries.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Lint this comment or review
+        run: |
+          test -f .github/scripts/register-lint.py || {
+            echo "::error title=Register check::the default branch carries no register checker, so there is no trusted copy to run, and this fails closed."
+            exit 1
+          }
+          python3 .github/scripts/register-lint-selftest.py
+          python3 .github/scripts/register-lint.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

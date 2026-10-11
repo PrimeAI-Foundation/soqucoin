@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
-"""Fixture corpus for the two workflow steps of the Register check.
+"""Fixture corpus for the three workflow steps of the Register check.
 
 The required step lives in .github/workflows/register.yml and runs the default branch's
-checker over a pull request's text. The cross-run step lives in
-.github/workflows/register-crossrun.yml and runs the checker a pull request ships against the
-default branch's corpus. Each set of cases below builds the workspace the runner would build,
-runs the step out of the workflow file, and requires the right verdict for the right reason.
+checker over a pull request's title, body, commits and file names on pull_request_target. The
+comment step lives in .github/workflows/register-comments.yml and runs the same checker over a
+comment or review. The cross-run step lives in .github/workflows/register-crossrun.yml and
+runs the checker a pull request ships against the default branch's corpus. Each set of cases
+below builds the workspace the runner would build, runs the step out of the workflow file, and
+requires the right verdict for the right reason.
 
 The step under test is read out of the workflow and executed, rather than restated here. Each
-step's body has to live in its workflow: both jobs check out a trusted ref, and the trusted
+step's body has to live in its workflow: every job checks out a trusted ref, and the trusted
 ref of the change that would add a script beside the step does not carry that script, so the
 step would fail on its own run. Reading the block back is what keeps these cases honest about
 the thing that actually runs.
 
-The required cases drive the step with a comment event, which is the branch of the checker
-that reads only the event payload, so nothing here reaches the network. It runs in the Test
-workflow, off the pull request head, and has no part in the trust either step rests on: the
-corpus and the checker those steps run come from the trusted ref either way, so a pull request
-that rewrites this file still faces both steps.
+The required cases drive the step with a pull_request_target payload. That branch of the
+checker reads two list endpoints, so those cases put a sitecustomize module on PYTHONPATH that
+answers every request with an empty list, and nothing here reaches the network. The comment
+cases drive the comment step with comment and review events, which read only the payload.
+
+This corpus runs in the Register corpora workflow, off the pull request head, and has no part
+in the trust any step rests on: the corpus and the checker those steps run come from the
+trusted ref either way, so a pull request that rewrites this file still faces every step.
 """
 import json
 import os
@@ -33,6 +38,7 @@ REPO = os.path.dirname(os.path.dirname(HERE))
 WORKFLOWS = os.path.join(REPO, ".github", "workflows")
 CROSSRUN_STEP = "The base corpus against this pull request's checker"
 REQUIRED_STEP = "Lint the text of this pull request"
+COMMENT_STEP = "Lint this comment or review"
 with open(os.path.join(HERE, "register-lint.py"), encoding="utf-8") as _fh:
     CHECKER = _fh.read()
 CORPUS = os.path.join(HERE, "register-lint-selftest.py")
@@ -60,8 +66,53 @@ def step_script(workflow, step_name):
     return "\n".join(body)
 
 
+def workflow_lines(workflow):
+    with open(os.path.join(WORKFLOWS, workflow), encoding="utf-8") as fh:
+        return fh.read().splitlines()
+
+
+def triggers(workflow):
+    """The event names under the top-level `on:` key, read the way it is written here."""
+    lines = workflow_lines(workflow)
+    try:
+        at = lines.index("on:")
+    except ValueError:
+        raise SystemExit(f"FAIL | {workflow} has no top-level `on:` block this corpus can read")
+    names = []
+    for line in lines[at + 1:]:
+        if line.strip() and not line.startswith(" "):
+            break
+        if line.startswith("  ") and not line.startswith("   ") and line.rstrip().endswith(":"):
+            names.append(line.strip()[:-1])
+    return names
+
+
+def job_ids(workflow):
+    """The job ids under the top-level `jobs:` key."""
+    lines = workflow_lines(workflow)
+    at = lines.index("jobs:")
+    return [l.strip()[:-1] for l in lines[at + 1:]
+            if l.startswith("  ") and not l.startswith("   ") and l.rstrip().endswith(":")]
+
+
 SCRIPT = step_script("register-crossrun.yml", CROSSRUN_STEP)
 REQUIRED = step_script("register.yml", REQUIRED_STEP)
+COMMENTS = step_script("register-comments.yml", COMMENT_STEP)
+
+# Answers every API request the checker makes with an empty list and no next page, so the
+# pull_request_target branch runs to its verdict offline.
+OFFLINE_API = '''
+import io, urllib.request
+
+class _Empty(io.BytesIO):
+    headers = {}
+    def __enter__(self):
+        return self
+    def __exit__(self, *_):
+        return False
+
+urllib.request.urlopen = lambda req, timeout=None: _Empty(b"[]")
+'''
 
 
 def build(root, edit=None, delete=False, corpus_symlink=None, checker_symlink=None,
@@ -112,14 +163,18 @@ def run(cwd, runner_temp, step_env=None):
     return r.returncode, r.stdout + r.stderr
 
 
-def run_required(cwd, event_name, payload):
-    """The required step, driven by an event payload the way the runner drives it."""
+def run_step(script, cwd, event_name, payload):
+    """A checker step, driven by an event payload the way the runner drives it."""
     path = os.path.join(cwd, "event.json")
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(payload, fh)
+    site = os.path.join(os.path.dirname(cwd), "offline-site")
+    os.makedirs(site, exist_ok=True)
+    with open(os.path.join(site, "sitecustomize.py"), "w", encoding="utf-8") as fh:
+        fh.write(OFFLINE_API)
     env = dict(os.environ, GITHUB_EVENT_PATH=path, GITHUB_EVENT_NAME=event_name,
-               GITHUB_REPOSITORY="owner/repo", GITHUB_TOKEN="fixture")
-    r = subprocess.run(["bash", "-e", "-c", REQUIRED], cwd=cwd, env=env,
+               GITHUB_REPOSITORY="owner/repo", GITHUB_TOKEN="fixture", PYTHONPATH=site)
+    r = subprocess.run(["bash", "-e", "-c", script], cwd=cwd, env=env,
                        capture_output=True, text=True)
     return r.returncode, r.stdout + r.stderr
 
@@ -139,6 +194,14 @@ def drop(needle):
 
 def comment(body):
     return {"comment": {"body": body, "user": {"login": "someone", "type": "User"}}}
+
+
+def review(body):
+    return {"review": {"body": body, "user": {"login": "someone", "type": "User"}}}
+
+
+def pull_request(body, title="doc: one change"):
+    return {"pull_request": {"number": 1, "title": title, "body": body}}
 
 
 DIRTY = "x\n\nCo-Authored-By: a <a@b.c>"
@@ -214,25 +277,67 @@ CASES = [
      False, "runtime-token=absent"),
 ]
 
-# The required step runs the trusted checker over the pull request's own text. Its cases are
-# about what a pull request cannot do to it: the head's copy of the checker is present in the
-# workspace for most of them and has no bearing on the verdict.
+# The required step runs the trusted checker over the pull request's own text, on the one
+# event its workflow fires on. Its cases are about what a pull request cannot do to it: the
+# head's copy of the checker is present in the workspace for most of them and has no bearing
+# on the verdict.
 REQUIRED_CASES = [
     # (name, build kwargs, event name, payload, must refuse, a string in the output)
-    ("a comment of ours carrying a trailer is refused",
-     {}, "issue_comment", comment(DIRTY), True, "attribution"),
-    ("a comment of ours in register passes",
-     {}, "issue_comment", comment(CLEAN), False, "no findings"),
+    ("a pull request body carrying a trailer is refused",
+     {}, "pull_request_target", pull_request(DIRTY), True, "the pull request body"),
+    ("a pull request title carrying a trailer is refused",
+     {}, "pull_request_target", pull_request(CLEAN, title=DIRTY), True,
+     "the pull request title"),
+    ("a pull request in register passes",
+     {}, "pull_request_target", pull_request(CLEAN), False, "no findings"),
     ("a head that drops the co-author pattern does not change the verdict",
-     {"edit": drop('    r"co-authored-by",\n')}, "issue_comment", comment(DIRTY),
+     {"edit": drop('    r"co-authored-by",\n')}, "pull_request_target", pull_request(DIRTY),
      True, "attribution"),
     ("a head that empties the checker does not change the verdict",
-     {"edit": lambda t: ""}, "issue_comment", comment(DIRTY), True, "attribution"),
+     {"edit": lambda t: ""}, "pull_request_target", pull_request(DIRTY), True, "attribution"),
     ("the step reads nothing from a head tree, which its job never checks out",
-     {"head_tree": False}, "issue_comment", comment(DIRTY), True, "attribution"),
+     {"head_tree": False}, "pull_request_target", pull_request(DIRTY), True, "attribution"),
     ("a trusted ref with no checker fails closed",
+     {"trusted_checker": False}, "pull_request_target", pull_request(CLEAN),
+     True, "carries no register checker"),
+]
+
+# The comment step runs the same trusted checker over one comment or review. It is advisory,
+# and these cases hold that it still refuses what the required step refuses.
+COMMENT_CASES = [
+    ("a comment of ours carrying a trailer is refused",
+     {}, "issue_comment", comment(DIRTY), True, "attribution"),
+    ("a review comment of ours carrying a trailer is refused",
+     {}, "pull_request_review_comment", comment(DIRTY), True, "attribution"),
+    ("a review of ours carrying a trailer is refused",
+     {}, "pull_request_review", review(DIRTY), True, "attribution"),
+    ("a comment of ours in register passes",
+     {}, "issue_comment", comment(CLEAN), False, "no findings"),
+    ("a head that drops the co-author pattern does not change the comment verdict",
+     {"edit": drop('    r"co-authored-by",\n')}, "issue_comment", comment(DIRTY),
+     True, "attribution"),
+    ("the comment step reads nothing from a head tree",
+     {"head_tree": False}, "pull_request_review", review(DIRTY), True, "attribution"),
+    ("a trusted ref with no checker fails the comment step closed",
      {"trusted_checker": False}, "issue_comment", comment(CLEAN),
      True, "carries no register checker"),
+]
+
+# The split itself. A comment trigger added back to register.yml would let a run that reads
+# only a comment, and on review events runs the merge ref's checker, publish under the
+# required check's name. A comment job named `register` would do the same from the other file.
+# Without the explicit ref, the review events would check out the merge ref.
+STRUCTURE_CASES = [
+    ("the required workflow fires on pull_request_target alone",
+     lambda: triggers("register.yml") == ["pull_request_target"],
+     lambda: f"register.yml triggers: {triggers('register.yml')}"),
+    ("the comment workflow does not publish under the required job's name",
+     lambda: "register" not in job_ids("register-comments.yml"),
+     lambda: f"register-comments.yml jobs: {job_ids('register-comments.yml')}"),
+    ("the comment workflow checks out the default branch by name",
+     lambda: "ref: ${{ github.event.repository.default_branch }}"
+             in "\n".join(l.strip() for l in workflow_lines("register-comments.yml")),
+     lambda: "register-comments.yml names no default-branch ref on its checkout"),
 ]
 
 
@@ -269,21 +374,28 @@ def main():
         finally:
             shutil.rmtree(root, ignore_errors=True)
 
-    for name, kwargs, event_name, payload, want_refuse, needle in REQUIRED_CASES:
-        root = tempfile.mkdtemp(prefix="register-required-")
-        try:
+    for script, cases, prefix in ((REQUIRED, REQUIRED_CASES, "register-required-"),
+                                  (COMMENTS, COMMENT_CASES, "register-comments-")):
+        for name, kwargs, event_name, payload, want_refuse, needle in cases:
+            root = tempfile.mkdtemp(prefix=prefix)
             try:
-                cwd, _ = build(root, **kwargs)
-            except AssertionError as exc:
-                print("FAIL |", name, "| the case could not be built |", exc)
-                bad += 1
-                continue
-            rc, out = run_required(cwd, event_name, payload)
-            bad += report(name, rc != 0, want_refuse, needle, out, rc)
-        finally:
-            shutil.rmtree(root, ignore_errors=True)
+                try:
+                    cwd, _ = build(root, **kwargs)
+                except AssertionError as exc:
+                    print("FAIL |", name, "| the case could not be built |", exc)
+                    bad += 1
+                    continue
+                rc, out = run_step(script, cwd, event_name, payload)
+                bad += report(name, rc != 0, want_refuse, needle, out, rc)
+            finally:
+                shutil.rmtree(root, ignore_errors=True)
 
-    total = len(CASES) + len(REQUIRED_CASES)
+    for name, holds, detail in STRUCTURE_CASES:
+        ok = holds()
+        print(("PASS" if ok else "FAIL"), "|", name, "" if ok else f"| {detail()}")
+        bad += 0 if ok else 1
+
+    total = len(CASES) + len(REQUIRED_CASES) + len(COMMENT_CASES) + len(STRUCTURE_CASES)
     print(f"\n{total - bad}/{total} cases behave")
     return 1 if bad else 0
 
