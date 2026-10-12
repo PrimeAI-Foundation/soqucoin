@@ -16,131 +16,127 @@ on:
 
 env:
   MAKEFLAGS: -j4
+  # The archives carry the tag's name. A workflow_dispatch run from a branch
+  # carries the version it was given, so a branch name with a slash in it
+  # does not become a path.
+  VERSION: ${{ github.event.inputs.version || github.ref_name }}
 
 permissions:
   contents: write
 
 jobs:
   # ============================================
-  # Linux x86_64 Build
+  # Linux builds, x86_64 and ARM64
+  # Each links the libraries from depends (static archives built for the
+  # target host) and the compiler's own static runtime, so the packaged
+  # binaries need only the C library and the dynamic loader: they run on any
+  # 64-bit Linux from Ubuntu 22.04 and Debian 12 onward. The v2.5.1 archives
+  # linked the runner's shared libraries and the in-tree univalue as a shared
+  # object that was never packaged, so they loaded nowhere as shipped. The
+  # check script fails the build on any other library, and smoke-linux runs
+  # the archives in clean containers before anything is published.
   # ============================================
-  build-linux-x64:
+  build-linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host: x86_64-pc-linux-gnu
+            asset: linux-x64
+            arch: x86-64
+            tool_prefix: ''
+            cross_packages: ''
+          - host: aarch64-linux-gnu
+            asset: linux-arm64
+            arch: aarch64
+            tool_prefix: aarch64-linux-gnu-
+            cross_packages: g++-aarch64-linux-gnu gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      
-      - name: Install dependencies
+
+      - name: Install build tools
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential libtool autotools-dev automake \
-            pkg-config bsdmainutils python3 libssl-dev \
-            libevent-dev libboost-all-dev libminiupnpc-dev \
-            libzmq3-dev libsqlite3-dev libdb++-dev
-      
+            build-essential libtool autotools-dev automake pkg-config bsdmainutils \
+            python3 curl bison binutils file ${{ matrix.cross_packages }}
+
+      - name: Build depends (static archives for ${{ matrix.host }})
+        run: make -C depends HOST=${{ matrix.host }} -j4 NO_QT=1
+
       - name: Build
         run: |
           ./autogen.sh
-          ./configure --without-gui --disable-tests --disable-bench
+          # --disable-shared links the in-tree univalue into the binaries; the
+          # static runtime flags keep libstdc++ and libgcc out of NEEDED.
+          CONFIG_SITE=$PWD/depends/${{ matrix.host }}/share/config.site \
+            ./configure --prefix=/ --without-gui --disable-tests --disable-bench --disable-shared \
+              LDFLAGS="-static-libstdc++ -static-libgcc"
           make $MAKEFLAGS
-      
-      - name: Verify binary
+          test -x src/soqucoind && test -x src/soqucoin-cli
+
+      - name: Verify binaries
         run: |
-          file src/.libs/soqucoind | grep -q "x86-64" && echo "✅ soqucoind is x86-64" || (echo "❌ Wrong architecture" && exit 1)
+          .github/scripts/check-linux-release.sh ${{ matrix.arch }} 2.35 '${{ matrix.tool_prefix }}' \
+            src/soqucoind src/soqucoin-cli
+          # configure builds without UPnP, and gives no warning, when it
+          # cannot find miniupnpc; ZMQ is left out only by --disable-zmq and
+          # the wallet by --disable-wallet. All three are in for both hosts;
+          # -help can only be run for the host's own architecture.
+          if [ -z '${{ matrix.tool_prefix }}' ]; then
+            for opt in -upnp -zmqpubhashblock -disablewallet; do
+              if ! src/soqucoind -help | grep -q -- "$opt"; then
+                echo "soqucoind -help does not list $opt" >&2
+                exit 1
+              fi
+            done
+          fi
 
       - name: Package
         run: |
           mkdir -p dist
-          cp src/.libs/soqucoind src/.libs/soqucoin-cli dist/
-          tar -czvf soqucoin-${{ github.ref_name }}-linux-x64.tar.gz -C dist .
-      
+          cp src/soqucoind src/soqucoin-cli dist/
+          tar -czvf soqucoin-${{ env.VERSION }}-${{ matrix.asset }}.tar.gz -C dist .
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: soqucoin-linux-x64
-          path: soqucoin-*-linux-x64.tar.gz
+          name: soqucoin-${{ matrix.asset }}
+          path: soqucoin-*-${{ matrix.asset }}.tar.gz
 
   # ============================================
-  # Linux ARM64 Build (cross-compile from x64)
+  # Linux smoke test: the packaged archives in clean distribution containers
   # ============================================
-  build-linux-arm64:
-    runs-on: ubuntu-22.04
+  smoke-linux:
+    needs: build-linux
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      
-      - name: Set up ARM64 multiarch
-        run: |
-          # Step 1: Add ARM64 architecture FIRST
-          sudo dpkg --add-architecture arm64
-          
-          # Step 2: Pin existing sources to amd64 only
-          sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list
-          
-          # Step 3: Add ARM64 package sources (Ubuntu ports)
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
 
-          # Step 4: Update package lists with new architecture
-          sudo apt-get update
-
-      - name: Install build tools and cross-compiler
-        run: |
-          # Native build tools (run on x64)
-          sudo apt-get install -y \
-            build-essential libtool autotools-dev automake \
-            pkg-config bsdmainutils python3 \
-            g++-aarch64-linux-gnu gcc-aarch64-linux-gnu
-
-      - name: Install ARM64 cross-libraries
-        run: |
-          # ARM64 target libraries (linked into the ARM64 binary)
-          sudo apt-get install -y \
-            libssl-dev:arm64 \
-            libevent-dev:arm64 \
-            libboost-system-dev:arm64 \
-            libboost-filesystem-dev:arm64 \
-            libboost-thread-dev:arm64 \
-            libboost-chrono-dev:arm64 \
-            libboost-program-options-dev:arm64 \
-            libdb++-dev:arm64
-      
-      - name: Build (cross-compile)
-        run: |
-          ./autogen.sh
-          ./configure --without-gui --disable-tests --disable-bench --disable-wallet \
-            --disable-zmq --without-miniupnpc \
-            --host=aarch64-linux-gnu \
-            --with-boost-libdir=/usr/lib/aarch64-linux-gnu \
-            CC=aarch64-linux-gnu-gcc \
-            CXX=aarch64-linux-gnu-g++ \
-            AR=aarch64-linux-gnu-ar \
-            RANLIB=aarch64-linux-gnu-ranlib \
-            STRIP=aarch64-linux-gnu-strip \
-            PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig \
-            PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig \
-            CPPFLAGS="-I/usr/aarch64-linux-gnu/include" \
-            LDFLAGS="-L/usr/aarch64-linux-gnu/lib"
-          make $MAKEFLAGS
-      
-      - name: Verify binary architecture
-        run: |
-          file src/.libs/soqucoind | grep -q "aarch64" && echo "✅ soqucoind is ARM64" || (echo "❌ Wrong architecture" && exit 1)
-          file src/.libs/soqucoin-cli | grep -q "aarch64" && echo "✅ soqucoin-cli is ARM64" || (echo "❌ Wrong architecture" && exit 1)
-
-      - name: Package
-        run: |
-          mkdir -p dist
-          cp src/.libs/soqucoind src/.libs/soqucoin-cli dist/
-          tar -czvf soqucoin-${{ github.ref_name }}-linux-arm64.tar.gz -C dist .
-      
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Download the Linux archives
+        uses: actions/download-artifact@v4
         with:
-          name: soqucoin-linux-arm64
-          path: soqucoin-*-linux-arm64.tar.gz
+          pattern: soqucoin-linux-*
+          path: archives
+          merge-multiple: true
+
+      - name: Set up qemu for the arm64 containers
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: x86-64 archive in Ubuntu 22.04, Ubuntu 24.04, Debian 12, Debian 13 and Fedora
+        run: |
+          .github/scripts/smoke-linux-release.sh archives/soqucoin-*-linux-x64.tar.gz linux/amd64 \
+            ubuntu:22.04 ubuntu:24.04 debian:12 debian:13 fedora:latest
+
+      - name: arm64 archive in Debian 13 and Ubuntu 24.04, under qemu
+        run: |
+          .github/scripts/smoke-linux-release.sh archives/soqucoin-*-linux-arm64.tar.gz linux/arm64 \
+            debian:13 ubuntu:24.04
 
   # ============================================
   # macOS Builds (Apple Silicon and Intel)
@@ -235,7 +231,7 @@ jobs:
         run: |
           mkdir -p dist
           cp src/soqucoind src/soqucoin-cli dist/
-          tar -czvf soqucoin-${{ github.ref_name }}-${{ matrix.asset }}.tar.gz -C dist .
+          tar -czvf soqucoin-${{ env.VERSION }}-${{ matrix.asset }}.tar.gz -C dist .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -284,7 +280,7 @@ jobs:
           cp src/.libs/soqucoind src/.libs/soqucoin-cli dist/ 2>/dev/null || \
           cp src/soqucoind.exe src/soqucoin-cli.exe dist/ 2>/dev/null || \
           cp src/soqucoind src/soqucoin-cli dist/
-          cd dist && zip -r ../soqucoin-${{ github.ref_name }}-windows-x64.zip .
+          cd dist && zip -r ../soqucoin-${{ env.VERSION }}-windows-x64.zip .
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -300,8 +296,8 @@ jobs:
     # nothing.
     if: startsWith(github.ref, 'refs/tags/')
     needs:
-      - build-linux-x64
-      - build-linux-arm64
+      - build-linux
+      - smoke-linux
       - build-macos
       - build-windows-x64
     runs-on: ubuntu-latest

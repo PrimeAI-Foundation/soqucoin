@@ -8,7 +8,7 @@ and how to build from source.
 
 ## Release downloads
 
-The current release, 2.5.1, on the [release page](https://github.com/soqucoin/soqucoin/releases)
+The current release, 2.5.2, on the [release page](https://github.com/soqucoin/soqucoin/releases)
 ships five archives and a `SHA256SUMS` file. Each archive holds two programs at
 the top level: `soqucoind`, the node, and `soqucoin-cli`, the command line tool
 you use to talk to it (`.exe` on Windows). There's no graphical wallet app and
@@ -17,23 +17,17 @@ asset list on the release you download.
 
 | Archive | System | Node wallet |
 | :--- | :--- | :--- |
-| `linux-x64.tar.gz` | Ubuntu 22.04, x86-64 | Included |
-| `linux-arm64.tar.gz` | Ubuntu 22.04, 64-bit ARM | Built without it |
+| `linux-x64.tar.gz` | 64-bit Linux, x86-64: Ubuntu 22.04 or newer, Debian 12 or newer, Fedora | Included |
+| `linux-arm64.tar.gz` | 64-bit Linux, ARM64: the same distributions, Raspberry Pi OS (Trixie) | Included |
 | `macos-arm64.tar.gz` | macOS 15 or later, Apple silicon | Built without it |
 | `macos-x64.tar.gz` | macOS 15 or later, Intel | Built without it |
 | `windows-x64.zip` | 64-bit Windows | Included |
 
-**Linux.** Both Linux builds are made on Ubuntu 22.04 and load shared
-libraries from it. Install them with:
-
-```bash
-sudo apt install libboost-filesystem1.74.0 libboost-program-options1.74.0 libboost-thread1.74.0 \
-  libboost-chrono1.74.0 libdb5.3++ libevent-2.1-7 libevent-pthreads-2.1-7 libminiupnpc17 libzmq5 \
-  libssl3 libunivalue0
-```
-
-The Linux builds won't start on Ubuntu 24.04, because `libunivalue.so.0` isn't
-packaged there. On 24.04 or any other distribution, build from source.
+**Linux.** Both Linux builds carry their libraries and need nothing installed.
+They run on any 64-bit Linux with glibc 2.35 or newer: Ubuntu 22.04, Debian 12,
+Fedora 36 and anything newer. On an older distribution, build from source. The
+2.5.1 Linux builds loaded shared libraries from Ubuntu 22.04 and did not start
+elsewhere; 2.5.2 replaces them.
 
 **macOS.** The macOS builds need macOS 15 (Sequoia) or later. They aren't
 notarized by Apple, so if you downloaded them with a browser, macOS blocks the
@@ -46,7 +40,7 @@ xattr -d com.apple.quarantine soqucoind soqucoin-cli
 **Windows.** Unzip anywhere, for example `C:\soqucoin`, and run the programs
 from PowerShell in that folder.
 
-If you need the node wallet on an ARM Linux machine or a Mac, build from source.
+If you need the node wallet on a Mac, build from source.
 The wallet is part of a source build unless you configure with
 `--disable-wallet`.
 
@@ -70,13 +64,13 @@ shasum -a 256 --ignore-missing -c SHA256SUMS
 Both print `OK` next to each archive that matches. On Windows, in PowerShell:
 
 ```powershell
-Get-FileHash .\soqucoin-v2.5.1-windows-x64.zip
+Get-FileHash .\soqucoin-v2.5.2-windows-x64.zip
 Select-String windows SHA256SUMS
 ```
 
 The two hashes have to match. PowerShell prints its hash in capitals, which
 doesn't matter. Use the version number of the release you downloaded in place
-of `v2.5.1`.
+of `v2.5.2`.
 
 `SHA256SUMS` isn't signed. A match tells you the archive arrived intact and is
 the same file that's on the release page. The archives and `SHA256SUMS` are
@@ -122,13 +116,13 @@ sudo apt install git build-essential libtool autotools-dev automake pkg-config b
   libssl-dev libevent-dev libboost-all-dev libminiupnpc-dev libzmq3-dev libsqlite3-dev libdb++-dev
 git clone https://github.com/soqucoin/soqucoin.git
 cd soqucoin
-git checkout v2.5.1
+git checkout v2.5.2
 ./autogen.sh
 ./configure --without-gui --disable-tests --disable-bench
 make -j"$(nproc)"
 ```
 
-Use the tag of the current release in place of `v2.5.1`. The build takes a few
+Use the tag of the current release in place of `v2.5.2`. The build takes a few
 minutes on a modern machine. On a machine with less than 4 GB of memory, use
 `make -j1` so it doesn't run out. The programs end up in `src/`.
 
