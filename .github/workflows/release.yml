@@ -16,6 +16,10 @@ on:
 
 env:
   MAKEFLAGS: -j4
+  # The archives carry the tag's name. A workflow_dispatch run from a branch
+  # carries the version it was given, so a branch name with a slash in it
+  # does not become a path.
+  VERSION: ${{ github.event.inputs.version || github.ref_name }}
 
 permissions:
   contents: write
@@ -94,7 +98,7 @@ jobs:
         run: |
           mkdir -p dist
           cp src/soqucoind src/soqucoin-cli dist/
-          tar -czvf soqucoin-${{ github.ref_name }}-${{ matrix.asset }}.tar.gz -C dist .
+          tar -czvf soqucoin-${{ env.VERSION }}-${{ matrix.asset }}.tar.gz -C dist .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -227,7 +231,7 @@ jobs:
         run: |
           mkdir -p dist
           cp src/soqucoind src/soqucoin-cli dist/
-          tar -czvf soqucoin-${{ github.ref_name }}-${{ matrix.asset }}.tar.gz -C dist .
+          tar -czvf soqucoin-${{ env.VERSION }}-${{ matrix.asset }}.tar.gz -C dist .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -276,7 +280,7 @@ jobs:
           cp src/.libs/soqucoind src/.libs/soqucoin-cli dist/ 2>/dev/null || \
           cp src/soqucoind.exe src/soqucoin-cli.exe dist/ 2>/dev/null || \
           cp src/soqucoind src/soqucoin-cli dist/
-          cd dist && zip -r ../soqucoin-${{ github.ref_name }}-windows-x64.zip .
+          cd dist && zip -r ../soqucoin-${{ env.VERSION }}-windows-x64.zip .
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
