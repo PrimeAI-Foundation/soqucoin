@@ -19,38 +19,34 @@ Our official channels are X [@soqucoin](https://x.com/soqucoin), Telegram [t.me/
 
 | Your computer | What to download |
 |---|---|
-| Ubuntu 22.04 (x64 or ARM64) | The ready-made Linux build |
-| Ubuntu 24.04 or another Linux | Build from source ([see below](#building-from-source)). The ready-made Linux build is made for Ubuntu 22.04 and won't load on 24.04 |
+| 64-bit Linux, x64 or ARM64: Ubuntu 22.04 or newer, Debian 12 or newer, Fedora, Raspberry Pi OS (Trixie) | The ready-made Linux build |
+| An older Linux | Build from source ([see below](#building-from-source)) |
 | macOS 15 (Sequoia) or newer, Apple silicon or Intel | The ready-made macOS build |
 | 64-bit Windows | The ready-made Windows build |
 
 The chain starts empty on 13 October, so it won't use much for a long time. Our own stagenet nodes run in about 120 MB of memory. A machine with 2 GB of RAM and 20 GB of free disk has plenty of room, and that includes a small cloud server.
 
-The current release is **2.5.1**. Mainnet needs it: block 1 carries the genesis migration, and only 2.5.1 knows the rule for it, so an older release rejects block 1 and stops there.
+The current release is **2.5.2**: the 2.5.1 node with ready-made Linux builds that run on any current 64-bit Linux. Mainnet needs 2.5.1 or 2.5.2: block 1 carries the genesis migration, and only they know the rule for it, so an older release rejects block 1 and stops there.
 
 ## Step 1: Download and check it
 
-### Linux (Ubuntu 22.04)
+### Linux
 
 On an ARM64 machine, swap `linux-x64` for `linux-arm64` everywhere it appears below.
 
 ```bash
 mkdir -p ~/soqucoin && cd ~/soqucoin
-curl -LO https://github.com/soqucoin/soqucoin/releases/download/v2.5.1/soqucoin-v2.5.1-linux-x64.tar.gz
-curl -LO https://github.com/soqucoin/soqucoin/releases/download/v2.5.1/SHA256SUMS
+curl -LO https://github.com/soqucoin/soqucoin/releases/download/v2.5.2/soqucoin-v2.5.2-linux-x64.tar.gz
+curl -LO https://github.com/soqucoin/soqucoin/releases/download/v2.5.2/SHA256SUMS
 sha256sum --ignore-missing -c SHA256SUMS
 ```
 
-Look for `soqucoin-v2.5.1-linux-x64.tar.gz: OK`. Anything else means a bad download: delete the file and download it again. Don't run it.
+Look for `soqucoin-v2.5.2-linux-x64.tar.gz: OK`. Anything else means a bad download: delete the file and download it again. Don't run it.
 
-Then unpack it and install the libraries it needs:
+Then unpack it. It needs no extra libraries.
 
 ```bash
-tar xzf soqucoin-v2.5.1-linux-x64.tar.gz
-sudo apt update
-sudo apt install libboost-filesystem1.74.0 libboost-program-options1.74.0 libboost-thread1.74.0 \
-  libboost-chrono1.74.0 libdb5.3++ libevent-2.1-7 libevent-pthreads-2.1-7 libminiupnpc17 libzmq5 \
-  libssl3 libunivalue0
+tar xzf soqucoin-v2.5.2-linux-x64.tar.gz
 ```
 
 That leaves two programs in `~/soqucoin`: `soqucoind` (the node) and `soqucoin-cli` (the tool you use to talk to it).
@@ -61,10 +57,10 @@ On an Intel Mac, swap `macos-arm64` for `macos-x64` in both places.
 
 ```bash
 mkdir -p ~/soqucoin && cd ~/soqucoin
-curl -LO https://github.com/soqucoin/soqucoin/releases/download/v2.5.1/soqucoin-v2.5.1-macos-arm64.tar.gz
-curl -LO https://github.com/soqucoin/soqucoin/releases/download/v2.5.1/SHA256SUMS
+curl -LO https://github.com/soqucoin/soqucoin/releases/download/v2.5.2/soqucoin-v2.5.2-macos-arm64.tar.gz
+curl -LO https://github.com/soqucoin/soqucoin/releases/download/v2.5.2/SHA256SUMS
 shasum -a 256 --ignore-missing -c SHA256SUMS
-tar xzf soqucoin-v2.5.1-macos-arm64.tar.gz
+tar xzf soqucoin-v2.5.2-macos-arm64.tar.gz
 ```
 
 Same check: look for `OK`. If you downloaded with a browser instead of `curl`, macOS will block the programs because they aren't notarized by Apple. Clear that with:
@@ -75,10 +71,10 @@ xattr -d com.apple.quarantine soqucoind soqucoin-cli
 
 ### Windows
 
-Download `soqucoin-v2.5.1-windows-x64.zip` and `SHA256SUMS` from the [release page](https://github.com/soqucoin/soqucoin/releases/tag/v2.5.1). In PowerShell, in the folder you saved them to:
+Download `soqucoin-v2.5.2-windows-x64.zip` and `SHA256SUMS` from the [release page](https://github.com/soqucoin/soqucoin/releases/tag/v2.5.2). In PowerShell, in the folder you saved them to:
 
 ```powershell
-Get-FileHash .\soqucoin-v2.5.1-windows-x64.zip
+Get-FileHash .\soqucoin-v2.5.2-windows-x64.zip
 Select-String windows SHA256SUMS
 ```
 
@@ -106,7 +102,7 @@ Check you're running the right release:
 ./soqucoind -version
 ```
 
-It should print `Soqucoin Core Daemon version v2.5.1.0-2a3dbb3` (or just `v2.5.1` if you built it yourself).
+It should print `Soqucoin Core Daemon version v2.5.2.0-` followed by the release commit (or just `v2.5.2` if you built it yourself).
 
 The node keeps its data and its log (`debug.log`) here:
 
@@ -119,7 +115,7 @@ The node keeps its data and its log (`debug.log`) here:
 Two things catch people who've run a node before:
 
 - **You ran stagenet.** If `soqucoin.conf` in the data folder has a `stagenet=1` line, your node is on stagenet. `getblockchaininfo` tells you which one: `"chain": "main"` is mainnet and `"chain": "stagenet"` is stagenet. Delete that line and restart.
-- **You ran a mainnet node with 2.5.0 or older.** Stop it, rename the data folder (for example to `Soqucoin.old`) and start 2.5.1 fresh. Renaming instead of deleting keeps any wallet that was in it.
+- **You ran a mainnet node with 2.5.0 or older.** Stop it, rename the data folder (for example to `Soqucoin.old`) and start 2.5.2 fresh. Renaming instead of deleting keeps any wallet that was in it.
 
 ## Step 3: What normal looks like
 
@@ -161,13 +157,13 @@ If either hash doesn't match, your node is on the wrong chain. Stop it, and don'
 
 ## Building from source
 
-Use this on Ubuntu 24.04 or any Linux where the ready-made build won't load. These steps are for Ubuntu 24.04:
+Use this on a Linux release before Ubuntu 22.04 or Debian 12, or to build the programs yourself. These steps are for Ubuntu 24.04:
 
 ```bash
 sudo apt update
 sudo apt install git build-essential libtool autotools-dev automake pkg-config bsdmainutils python3 \
   libssl-dev libevent-dev libboost-all-dev libminiupnpc-dev libzmq3-dev libsqlite3-dev libdb++-dev
-git clone --depth 1 --branch v2.5.1 https://github.com/soqucoin/soqucoin.git
+git clone --depth 1 --branch v2.5.2 https://github.com/soqucoin/soqucoin.git
 cd soqucoin
 ./autogen.sh
 ./configure --without-gui --disable-tests --disable-bench
@@ -186,12 +182,12 @@ Your node doesn't need mining turned on. On a regular node, `getblocktemplate` r
 
 The node's built-in wallet works on mainnet and stagenet. If you only need to validate and relay blocks, add `disablewallet=1` to `soqucoin.conf` in the data folder. That takes the wallet out of startup and out of the RPC commands. SoquShield and the SDK give you addresses and signing without the node wallet.
 
-Only the Linux x64 and Windows builds come with the wallet. The Linux ARM64 and macOS builds are made without it, so wallet commands like `getnewaddress` answer `error code: -32601` there. If you need the node wallet on one of those machines, build from source. The wallet is part of a source build. The [source build steps](#building-from-source) on this page cover Linux, and [INSTALL.md](../INSTALL.md) points to the macOS build steps.
+The Linux and Windows builds come with the wallet. The macOS builds are made without it, so wallet commands like `getnewaddress` answer `error code: -32601` there. If you need the node wallet on a Mac, build from source. The wallet is part of a source build. The [source build steps](#building-from-source) on this page cover Linux, and [INSTALL.md](../INSTALL.md) points to the macOS build steps.
 
 ## When something goes wrong
 
 **`error while loading shared libraries: libunivalue.so.0`** (or another `.so` file)
-On Ubuntu 22.04, run the `apt install` line from step 1 again. On Ubuntu 24.04 or another Linux, the ready-made build won't work there. [Build from source](#building-from-source).
+That is the 2.5.1 Linux build, which needed libraries it did not ship. Download 2.5.2 (step 1), which needs none.
 
 **`error: Could not locate RPC credentials. No authentication cookie could be found...`**
 The node isn't running, or it's still starting. Wait a few seconds and try again. If it keeps happening, look at the end of `debug.log` in the data folder. Run `soqucoin-cli` as the same user that started the node.
