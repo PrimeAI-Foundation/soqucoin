@@ -1,30 +1,8 @@
 # Security Policy
 
-## Supported Versions
+How to report a vulnerability, what to expect and the bounty are in [.github/SECURITY.md](.github/SECURITY.md). This file describes the cryptographic security model.
 
-| Version | Supported          | Notes                                |
-| ------- | ------------------ | ------------------------------------ |
-| 0.21.2  | :white_check_mark: | Current release (post-quantum ready) |
-| ≤ 0.21.1| :x:                | Pre-PQ, do not use                   |
-
-## Reporting a Vulnerability
-
-Soqucoin Core is a post-quantum cryptocurrency with native Dilithium (ML-DSA-44) signatures and PAT batch attestation. LatticeFold+ batch verification is deprecated and its deployment does not activate on any network. Security is therefore non-negotiable.
-
-To report a security vulnerability, please send a PGP-encrypted email to:
-
-**Casey Wilson**  
-E-mail: dev@soqu.org  
-PGP Key Fingerprint: Available on request at dev@soqu.org
-
-Alternatively, encrypted DMs are accepted via X/Twitter @saborealabs (preferred for speed).
-
-We follow responsible disclosure:  
-- You will receive an acknowledgement within 12 hours.  
-- A fix will be developed on a private branch and shipped within 72 hours for critical consensus issues.  
-- Public disclosure occurs only after the fix is live on mainnet or a credible timeline is agreed.
-
-Bounties: Critical consensus bugs (remote chain split, inflation, verifiable preimage) are eligible for ≥ 5000 SOQ bounty at mainnet launch, paid from block 100 001 reward.
+Soqucoin Core is a post-quantum cryptocurrency with native Dilithium (ML-DSA-44) signatures and PAT batch attestation. LatticeFold+ batch verification is deprecated and its deployment does not activate on any network.
 
 ## Cryptographic Security Model
 
@@ -75,7 +53,4 @@ The following items are acknowledged and documented for transparency:
 For detailed threat analysis, see `doc/wallet/WALLET_THREAT_MODEL.md`.  
 For cryptographic specifications, see `doc/wallet/WALLET_CRYPTOGRAPHIC_SPEC.md`.
 
-Thank you for helping keep the first quantum-resistant PoW chain unbreakable.
-
-- Casey Wilson, Soqucoin Founder   
-February 2026
+Thank you for reporting responsibly.

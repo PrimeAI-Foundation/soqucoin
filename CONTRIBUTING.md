@@ -5,7 +5,7 @@ Soqucoin is a post-quantum cryptocurrency. We welcome contributions, but please 
 ## Security Policy
 
 **DO NOT REPORT SECURITY VULNERABILITIES PUBLICLY.**
-If you discover a vulnerability, please email `security@soqu.org`.
+If you discover a vulnerability, report it privately as described in [.github/SECURITY.md](.github/SECURITY.md).
 
 ## Development Workflow
 
