@@ -2,69 +2,55 @@
 
 ## Supported Versions
 
-| Version      | Supported          | Notes                        |
-|------------- | ------------------ | -----------------------------|
-| 1.0.x        | :white_check_mark: | Current release candidate    |
-| < 1.0.0      | :x:                | Pre-release, do not deploy   |
+| Version | Supported          | Notes                |
+| ------- | ------------------ | -------------------- |
+| 2.5.x   | :white_check_mark: | Current release line |
+| < 2.5.0 | :x:                | Not supported        |
 
 ## Reporting a Vulnerability
 
-**Do NOT open a public issue for security vulnerabilities.**
+Please do not open a public issue for a security defect. Report it through GitHub private vulnerability
+reporting on this repository:
 
-### Contact
+https://github.com/soqucoin/soqucoin/security/advisories/new
 
-Email: [security@soqu.org](mailto:security@soqu.org)
+A report filed there is visible only to you and the repository's maintainers, and a fix can be prepared in a
+private fork. We do not use PGP for reports. If you cannot use GitHub, email security@soqu.org.
 
-To protect the confidentiality of your report, encrypt your email using the PGP key below.
+Please include the commit or release you tested, the network (mainnet, stagenet or regtest), the steps to
+reproduce and your assessment of the impact. Test on regtest or a private network, never against mainnet,
+stagenet or public nodes.
 
-### Response SLA
+## What to Expect
 
-| Severity    | Acknowledgment | Patch Target   |
-|------------ | -------------- | -------------- |
-| Critical    | 24 hours       | 72 hours       |
-| High        | 48 hours       | 7 days         |
-| Medium      | 5 business days| 30 days        |
-| Low         | 10 business days| Next release  |
+- GitHub confirms receipt when you submit. We triage reports by impact and reply on the advisory when we start
+  reviewing yours.
+- Every claim is reproduced from our own build before we confirm it. We do not run code or binaries supplied
+  with a report.
+- The fix is developed privately. Public disclosure follows once the fix is released, or on a timeline agreed
+  with you.
+- With your permission, you are credited in the release notes.
 
-### Disclosure Policy
+## Bounty
 
-We follow a **90-day responsible disclosure** window. After a fix is released, we will:
-1. Credit the reporter (unless anonymity is requested)
-2. Publish a security advisory via GitHub Security Advisories
-3. Notify node operators via the `soqucoin-security` mailing list
+A critical consensus bug (a remote chain split, inflation of the supply, or a verifiable preimage) confirmed
+under this policy is eligible for an award of at least 5,000 SOQ, paid by Soqucoin Labs Inc. Awards are
+decided once a report is confirmed, and the first valid report of a defect receives it. Payment is subject to
+the checks the law requires of us, such as sanctions screening and tax forms.
 
-### Bug Bounty
+Other reports in scope are welcome and credited, without an award.
 
-We offer bounties for qualifying vulnerabilities in the Soqucoin Core node:
+## Scope
 
-| Severity     | Bounty Range       |
-|------------- | -------------------|
-| Critical     | Up to $50,000 USD  |
-| High         | Up to $10,000 USD  |
-| Medium       | Up to $2,000 USD   |
-| Low          | Up to $500 USD     |
-
-Bounty eligibility requires:
-- First reporter of the vulnerability
-- Responsible disclosure (no public disclosure before fix)
-- Vulnerability must be in the latest supported release
-- Not a known issue listed in our [Security Issue Registry](https://github.com/soqucoin/soqucoin/security/advisories)
-
-### Scope
-
-**In scope:**
-- Consensus bugs (chain splits, inflation, double-spend)
-- Post-quantum cryptography (Dilithium, PAT, LatticeFold)
-- P2P network vulnerabilities (DoS, eclipse attacks)
-- Wallet/key management (key leakage, weak derivation)
+In scope:
+- Consensus: chain splits, inflation, double spends
+- Post-quantum cryptography: ML-DSA-44 signatures, PAT batch attestation
+- Peer-to-peer networking: denial of service against a node, eclipse attacks
+- Wallet and key management: key leakage, weak derivation
 - RPC authentication bypass
 
-**Out of scope:**
+Out of scope:
 - Third-party dependencies (report upstream)
-- Social engineering
-- Physical attacks
-- Bugs in unsupported versions
-
-### PGP Key
-
-For encrypted communication, please contact security@soqu.org to request the team's PGP public key.
+- Social engineering and physical attacks
+- Unsupported versions
+- Testing against mainnet, stagenet or public nodes
