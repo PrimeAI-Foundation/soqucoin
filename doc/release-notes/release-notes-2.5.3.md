@@ -16,10 +16,11 @@ Upgrading
 ---------
 
 Stop the running daemon, replace `soqucoind` and `soqucoin-cli`, start it. The
-data directory carries over on every network. A node run with `disablewallet=1`
-has no wallet data to back up; a node with a wallet keeps its wallet file. A
-node that last ran 2.5.0 or older on mainnet still needs a fresh mainnet data
-directory, as `doc/node-operators.md` describes.
+data directory carries over on every network. The upgrade neither reads nor
+writes a wallet file, whether the node loads one or runs with `disablewallet=1`;
+the usual practice of keeping a current backup of any wallet file applies as
+before. A node that last ran 2.5.0 or older on mainnet still needs a fresh
+mainnet data directory, as `doc/node-operators.md` describes.
 
 Notable changes
 ---------------
