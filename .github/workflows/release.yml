@@ -302,6 +302,17 @@ jobs:
       - build-windows-x64
     runs-on: ubuntu-latest
     steps:
+      # The release notes come from the tag's tree. The checkout goes into its
+      # own directory, so it never touches the downloaded archives. In cone mode
+      # it holds the top-level files, the files directly under doc/ and
+      # doc/release-notes; the repository tracks no archive, so the find below
+      # sees nothing new.
+      - name: Checkout the release notes
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: doc/release-notes
+          path: tree
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
       
@@ -316,14 +327,28 @@ jobs:
           cd release
           sha256sum *.tar.gz *.zip > SHA256SUMS
       
+      - name: Release notes
+        # The release page's notes are the tag's release-notes file,
+        # doc/release-notes/release-notes-<version>.md. A tag whose tree has no
+        # such file gets one line that points at the directory, so the archives
+        # still publish.
+        run: |
+          notes="tree/doc/release-notes/release-notes-${VERSION#v}.md"
+          if [ -f "$notes" ]; then
+            cp "$notes" release/NOTES.md
+          else
+            printf 'Release notes: doc/release-notes/ in the tree at tag %s.\n' "$VERSION" > release/NOTES.md
+          fi
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          body_path: release/NOTES.md
           files: |
             release/*.tar.gz
             release/*.zip
             release/SHA256SUMS
-          generate_release_notes: true
+          generate_release_notes: false
           draft: false
           prerelease: ${{ contains(github.ref, 'rc') || contains(github.ref, 'beta') }}
         env:
