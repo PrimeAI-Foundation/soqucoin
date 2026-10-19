@@ -303,8 +303,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # The release notes come from the tag's tree. The checkout goes into its
-      # own directory and takes doc/release-notes only, so it never touches the
-      # downloaded archives and brings no archive of its own into the find below.
+      # own directory, so it never touches the downloaded archives. In cone mode
+      # it holds the top-level files, the files directly under doc/ and
+      # doc/release-notes; the repository tracks no archive, so the find below
+      # sees nothing new.
       - name: Checkout the release notes
         uses: actions/checkout@v5
         with:

@@ -47,9 +47,10 @@ new checks and confirm that well-formed messages are still accepted.
 
 - `INSTALL.md`, `README.md` and `doc/node-operators.md` name 2.5.3 as the
   current release.
-- `SECURITY.md` and `.github/SECURITY.md` state one way to report a
-  vulnerability, GitHub private vulnerability reporting, with what to expect
-  and the bounty.
+- `.github/SECURITY.md` is the one security policy: reports go through GitHub
+  private vulnerability reporting, with an email address as the fallback, and
+  the policy states what to expect and the bounty. `SECURITY.md` points at it
+  and keeps the description of the cryptographic model.
 
 Known limitations
 -----------------
