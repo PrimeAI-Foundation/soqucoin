@@ -1562,9 +1562,11 @@ public:
         consensus.nHeightEffective = 0;
         consensus.fAllowLegacyBlocks = true;
         consensus.nAuxpowStartHeight = 100;  // Stagenet Vanguard Window: solo blocks 0-99, AuxPoW from 100
-        // The chain id rule stays off here for the reason fStrictChainId is
-        // false above: the live stagenet chain holds merge-mined blocks with
-        // chain id 0, and a rule from any height would reject them.
+        // The chain id rule stays off here: with fStrictChainId false above,
+        // the parent-side rule is off too, so a height would close nothing;
+        // and a height at or below the last chain-id-0 merge-mined block of
+        // the live stagenet chain would split a syncing or replaying node
+        // from it.
         consensus.nChainIdRequiredHeight = 0;
 
         // Digishield from block 1

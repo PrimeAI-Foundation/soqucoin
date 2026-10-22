@@ -486,7 +486,10 @@ BOOST_AUTO_TEST_CASE(chainid_required_height)
     }
     const int32_t kArm = chainActive.Height() + 2;
     RegtestChainIdRule rule(kArm);
+    // Every regtest tier carries the armed height: the base tier, the
+    // digishield tier from 10 and the AuxPoW tier from 20.
     BOOST_CHECK_EQUAL(cp.GetConsensus(0).nChainIdRequiredHeight, kArm);
+    BOOST_CHECK_EQUAL(cp.GetConsensus(10).nChainIdRequiredHeight, kArm);
     BOOST_CHECK_EQUAL(cp.GetConsensus(kArm).nChainIdRequiredHeight, kArm);
 
     // Below the height every chain id passes: what every node does today. A
@@ -501,8 +504,10 @@ BOOST_AUTO_TEST_CASE(chainid_required_height)
     MineRegtestBlock(cp, spk);
 
     // At the height the stamped shapes pass, merge-mined or not; every other
-    // chain id draws bad-chain-id with DoS 100; and a legacy header still
-    // draws the neighbour's reject, not this rule's.
+    // chain id draws bad-chain-id with DoS 100 through this function (on the
+    // network path a merge-mined shape that carries no auxpow fails
+    // CheckBlockHeader's proof-of-work check first); and a legacy header
+    // still draws the neighbour's reject, not this rule's.
     BOOST_REQUIRE_EQUAL(chainActive.Height() + 1, kArm);
     for (int32_t v : {kDirect, kAuxpow}) {
         BOOST_CHECK_MESSAGE(judge(v), strprintf("version 0x%08x refused at the height: %s", v, reason));

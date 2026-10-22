@@ -174,9 +174,17 @@ class ChainIdRequiredHeightTest(BitcoinTestFramework):
         stop_node(plain, 1)
         plain = self.nodes[1] = start_node(1, self.options.tmpdir,
                                            ["-debug", "-blockversion=4", "-chainidrequiredheight=%d" % HEIGHT, "-reindex"])
+        # RPC answers once genesis is processed while the replay goes on in
+        # the import thread, so wait for the replay to reach the parent, the
+        # last block in the file, and refuse it; then the tip is final.
+        refused = "AcceptBlockHeader: Consensus::ContextualCheckBlockHeader: %s, bad-chain-id" % parent.hash
+        for _ in range(240):
+            if refused in self.debug_log(1):
+                break
+            time.sleep(0.5)
+        assert refused in self.debug_log(1)
         assert_equal(plain.getblockcount(), HEIGHT - 1)
         assert_equal(plain.getbestblockhash(), child_hash)
-        assert ("AcceptBlockHeader: Consensus::ContextualCheckBlockHeader: %s, bad-chain-id" % parent.hash) in self.debug_log(1)
 
         # 7. The regtest option is bounded to a block height: the largest value
         #    starts a node and is formatted on its startup line; a negative one

@@ -839,13 +839,16 @@ BOOST_AUTO_TEST_CASE(block1_time_gate_per_network)
 }
 
 // Chain id rule (bead 0o4b0): the height it applies from is the same on every
-// tier GetConsensus can return, because ContextualCheckBlockHeader reads it
-// through GetConsensus(nHeight) at the height it judges. Mainnet carries 0
-// until the release that schedules it, which changes this constant to the
-// scheduled height; testnet mirrors mainnet; stagenet, whose history holds
-// merge-mined blocks with chain id 0, and regtest, which arms it per test,
-// carry 0. The id the rule requires is pinned beside it on the two networks
-// that can schedule it.
+// tier GetConsensus can return, because the rule reads it through
+// GetConsensus(nHeight) at the height it judges. Mainnet carries 0 until the
+// release that schedules it, which changes this constant to the scheduled
+// height; testnet mirrors mainnet by design (as its fStrictChainId does), so
+// the one constant covers both and that release sets it on both; stagenet,
+// whose history holds merge-mined blocks with chain id 0, and regtest, which
+// arms it per test, carry 0. Pinned beside the height on the two networks
+// that can schedule it: the id the rule requires, the strict flag the
+// merge-mined-only check and the parent-side rule both depend on (with it
+// off the height would close nothing), and the base-version gate's height.
 BOOST_AUTO_TEST_CASE(chain_id_rule_height_per_network)
 {
     static const int kHeights[] = {0, 1, 2, 9, 10, 11, 19, 20, 21, 100, 1000, 99999, 100000, 100001, 1000000};
@@ -856,6 +859,7 @@ BOOST_AUTO_TEST_CASE(chain_id_rule_height_per_network)
         for (int h : kHeights) {
             BOOST_CHECK_EQUAL(Params().GetConsensus(h).nChainIdRequiredHeight, kMainnetHeight);
             BOOST_CHECK_EQUAL(Params().GetConsensus(h).nAuxpowChainId, 0x5351);
+            BOOST_CHECK(Params().GetConsensus(h).fStrictChainId);
             // The rule exempts legacy blocks (base version 1, or 2 with chain
             // id 0). On these networks the base-version gate refuses any base
             // version below 4 from height 0, so the exemption reaches no
