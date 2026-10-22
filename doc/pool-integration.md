@@ -1,9 +1,9 @@
-# Pool Integration Guide — Soqucoin (SOQ)
+# Pool Integration Guide: Soqucoin (SOQ)
 
 > **Target audience**: Mining pool operators integrating Soqucoin  
 > **Algorithm**: Scrypt (compatible with LTC/DOGE infrastructure)  
-> **AuxPoW**: Yes — merge-mining with Litecoin, Dogecoin, and other Scrypt chains  
-> **Signatures**: Dilithium ML-DSA-44 (quantum-safe) — transparent to pool operators  
+> **AuxPoW**: Yes, merge-mining with Litecoin or another Scrypt chain as the parent, valid from block 0  
+> **Signatures**: ML-DSA-44 (FIPS 204, "Dilithium"), transparent to pool operators  
 > **Last updated**: October 2026
 
 > **Status**: SOQUPOOL is the only supported way to mine SOQ at mainnet launch,
@@ -15,21 +15,35 @@
 
 ## Overview
 
-Soqucoin is a Scrypt-based AuxPoW blockchain derived from Dogecoin Core. Pool
-integration is straightforward if you already support Litecoin or Dogecoin.
+Soqucoin is a Scrypt-based AuxPoW blockchain based on Dogecoin Core. Mainnet has
+run since 13 October 2026. Pool integration is straightforward if you already
+support Litecoin or Dogecoin.
 
 **Key differences from Dogecoin/Litecoin:**
 - **Bech32m addresses** (`sq1p...` on mainnet, `ssq1p...` on stagenet)
-- **60-second block target** (same as Dogecoin)
-- **Dilithium signatures** in witness data (transparent to Stratum — coinbase/header format unchanged)
-- **AuxPoW chain ID**: matches Dogecoin's AuxPoW format
+- **60-second block target** (same as Dogecoin), retargeted every block
+- **ML-DSA-44 signatures** in witness data (transparent to Stratum; coinbase and header formats unchanged)
+- **AuxPoW chain ID 0x5351** (21329 decimal), checked strictly on mainnet; the format is Dogecoin's
+- **Coinbase maturity 288 blocks**
+
+### Networks
+
+| Network | P2P port | RPC port | Address prefix | AuxPoW valid from | Strict chain ID | DNS seed |
+|---------|----------|----------|----------------|-------------------|-----------------|----------|
+| Mainnet | 33388 | 33389 | `sq1p` | block 0 | yes | `seed1.soqu.org`, `seed2.soqu.org`, `seed3.soqu.org` |
+| Stagenet | 28333 | 28332 | `ssq1p` | block 100 | no | `stagenet.soqu.org` |
+| Regtest | 18444 | 18332 | `sq1p` | block 20 | yes | none |
+
+Source: `src/chainparams.cpp` and `src/chainparamsbase.cpp`.
 
 ---
 
 ## RPC Interface
 
 Soqucoin's RPC interface is compatible with Bitcoin Core / Dogecoin Core.
-All standard mining RPCs are available:
+All standard mining RPCs are available. On mainnet they are served only when
+the node runs with `enablemining=1` (see the configuration below), and a node
+that is still in initial block download refuses to serve work.
 
 ### Block Template (Stratum/GBT)
 
@@ -41,6 +55,10 @@ soqucoin-cli getblocktemplate '{"rules": ["segwit"]}'
 soqucoin-cli createauxblock <payout_address>
 soqucoin-cli submitauxblock <hash> <auxpow_hex>
 ```
+
+`createauxblock` and `submitauxblock` need no wallet. `getauxblock` (the
+Dogecoin form with no address argument) pays the node's own wallet and needs
+one; the macOS builds are made without a wallet.
 
 ### Node Information
 
@@ -60,36 +78,35 @@ soqucoin-cli sendtoaddress <addr> <amt>  # Send payout
 soqucoin-cli validateaddress <addr>      # Validate miner address
 ```
 
+The node's wallet is one way to hold and pay SOQ. The other is the Go SDK
+([github.com/soqucoin/soqucoin-sdk](https://github.com/soqucoin/soqucoin-sdk)),
+which derives keys, builds and signs transactions in your own infrastructure
+and uses the node only to read the chain and broadcast; its
+`docs/EXCHANGE_INTEGRATION.md` describes that path, including the sizes of
+ML-DSA-44 keys and signatures.
+
 ---
 
 ## RPC Configuration
 
 ```ini
-# soqucoin.conf for pool backend
+# soqucoin.conf for a mainnet pool node
 server=1
-txindex=1
 
 # RPC credentials
 rpcuser=pool_rpc_user
 rpcpassword=<strong_random_password>
-rpcport=28332          # stagenet
-# rpcport=33389        # mainnet
+rpcport=33389          # mainnet
+# rpcport=28332        # stagenet, with stagenet=1
 
-# Serve mining work over RPC. Default is 1 on every network except mainnet,
-# where the launch-period default is 0; pool and miner-facing nodes opt in.
+# Serve mining work over RPC (getblocktemplate, createauxblock, submitauxblock).
+# Default is 1 on every network except mainnet, where the default is 0; a pool
+# node opts in.
 enablemining=1
 
-# LAUNCH-PERIOD REQUIREMENT (mainnet). A node whose tip is still genesis is in
-# initial block download once the wall clock is more than maxtipage seconds
-# past the genesis timestamp (1788365451, 2026-09-02T16:10:51Z; default 86400).
-# In that state getblocktemplate and createauxblock refuse to serve work, so
-# with the default no node can mine block 1 once the clock is more than 86400 s
-# past that timestamp (from 2026-09-03T16:10:51Z onward).
-# Every node that serves work at launch must set maxtipage to at least
-# (launch time - 1788365451) plus margin, and keep it until block 1 has
-# propagated. 5184000 covers a launch up to 60 days after genesis. Remove it
-# once the chain has a fresh tip: the 24h default is the right steady state.
-maxtipage=5184000
+# Optional: index every transaction, so getrawtransaction answers for any txid.
+# Set it before the first start; adding it later needs -reindex-chainstate.
+txindex=1
 
 # Allow pool server to connect
 rpcallowip=127.0.0.1
@@ -104,6 +121,11 @@ maxmempool=512
 zmqpubhashblock=tcp://127.0.0.1:28334
 zmqpubrawtx=tcp://127.0.0.1:28334
 ```
+
+A node whose tip is more than 24 hours old (`maxtipage`, default 86400)
+reports initial block download and refuses to serve work until it has caught
+up. Let a fresh node sync before you point a stratum server at it; the chain is
+small and a sync takes minutes.
 
 ---
 
@@ -146,14 +168,22 @@ Include your pool name in the coinbase scriptSig for identification:
 
 Example (hex): `2f596f7572506f6f6c4e616d652f`
 
+With `getblocktemplate` you build the coinbase yourself and the tag goes into
+it. With `createauxblock` the node builds the Soqucoin coinbase, so a
+merge-mined block is identified by the tag in the parent chain's coinbase.
+
 ### AuxPoW (Merged Mining)
 
-Soqucoin supports AuxPoW for merged mining with Litecoin as the parent chain.
-Use `createauxblock` / `submitauxblock` RPCs:
+Soqucoin uses the same AuxPoW format as Dogecoin, with Litecoin as the usual
+parent chain. The parent can be any Scrypt chain whose block version does not
+carry chain ID 0x5351 (`fStrictChainId` on mainnet rejects a parent that does).
+The slot of Soqucoin in the merged-mining merkle tree follows from the chain ID,
+the merkle nonce and the tree size, as it does for Dogecoin. Use
+`createauxblock` / `submitauxblock`:
 
 ```bash
-# 1. Create an aux block (returns hash + hex to embed in parent coinbase)
-soqucoin-cli createauxblock ssq1p23ssp9dsfcxzn33msmfzsk723rg24h9j8lrdn4qtaezcztjemd3smejtp7
+# 1. Create an aux block (returns hash + fields to embed in the parent coinbase)
+soqucoin-cli createauxblock <payout_address>
 
 # Response:
 # {
@@ -162,7 +192,7 @@ soqucoin-cli createauxblock ssq1p23ssp9dsfcxzn33msmfzsk723rg24h9j8lrdn4qtaezcztj
 #   "previousblockhash": "...",
 #   "coinbasevalue": 10000000000000,
 #   "bits": "...",
-#   "height": 126,
+#   "height": 15000,
 #   "target": "..."
 # }
 # (With -rpcnamecoinapi the last field is named "_target".)
@@ -171,6 +201,10 @@ soqucoin-cli createauxblock ssq1p23ssp9dsfcxzn33msmfzsk723rg24h9j8lrdn4qtaezcztj
 # 3. When parent block found, submit the AuxPoW:
 soqucoin-cli submitauxblock <hash> <serialized_auxpow>
 ```
+
+`coinbasevalue` is in the smallest unit, 100,000,000 per SOQ: 10,000,000,000,000
+is the 100,000 SOQ block reward. The block's version field already carries the
+chain ID; the node sets it.
 
 ---
 
@@ -186,8 +220,8 @@ soqucoin-cli submitauxblock <hash> <serialized_auxpow>
 
 **Notes:**
 - Reward is 100% to miner (no dev tax, no foundation cut)
-- Transaction fees (SOQ only) are added to the block reward
-- USDSOQ fees are NOT miner-claimable (per-asset isolation)
+- Transaction fees are added to the block reward
+- Source: `nInitialSubsidy` and `nSubsidyHalvingInterval` in `src/chainparams.cpp`, the tail in `src/soqucoin.cpp`
 
 ---
 
@@ -197,24 +231,38 @@ soqucoin-cli submitauxblock <hash> <serialized_auxpow>
 |-----------|-------|
 | PoW Algorithm | Scrypt (N=1024, r=1, p=1) |
 | Block Time Target | 60 seconds |
-| Difficulty Adjustment | Every block (DGW v3) |
-| Max Block Size | 1 MB (weight: 4 MW) |
-| SegWit | Active (witness v0, v1, v2, v3, v4, v5) |
-| Signature Algorithm | Dilithium ML-DSA-44 (NIST FIPS 204) |
-| AuxPoW | Enabled |
+| Difficulty Adjustment | Every block from block 1 (DigiShield, 60-second timespan) |
+| Max Block Size | 1 MB base, 4,000,000 weight units |
+| Payment outputs | Witness v1 (bech32m `sq1p`), ML-DSA-44; other output forms are refused at relay on mainnet |
+| Signature Algorithm | ML-DSA-44 (NIST FIPS 204) |
+| AuxPoW | Enabled from block 0; chain ID 0x5351; strict chain ID on mainnet |
+| Coinbase Maturity | 288 blocks |
+| Reorganisation horizon | A synced node rejects a fork 288 blocks deep or more |
 | P2P Protocol Version | 70015 |
 
 ---
 
 ## Testing Your Integration
 
-### Stagenet Endpoints
+### Stagenet
 
-| Service | Address |
-|---------|---------|
-| P2P | 64.23.197.144:28333 |
-| P2P (backup) | 143.110.229.69:28333 |
-| Stratum (test pool) | 64.23.197.144:3333 |
+Stagenet is the live test network. Put `stagenet=1` in `soqucoin.conf`; the
+node finds peers through `stagenet.soqu.org` on port 28333 and serves RPC on
+28332. Addresses start with `ssq1p`. AuxPoW is valid from block 100 there, and
+the strict chain ID check is off on stagenet, so a wrong chain ID in a
+submission is caught only on mainnet.
+
+### Mainnet dry run
+
+A synced mainnet node with `enablemining=1` answers `createauxblock` without
+mining anything, so the fields and the merkle-tree slot can be checked before
+the first real submission. A submission with a wrong chain ID is rejected by
+the node itself. The block explorer at
+[explorer.soqu.org](https://explorer.soqu.org) shows every block with its
+AuxPoW parent, and its API answers `/api/blocks/tip/height`,
+`/api/block/<height or hash>`, `/api/tx/<txid>` and `/api/mining/hashrate`.
+To check that a node is on the live chain, compare `getblockhash 1` with the
+hash in [node-operators.md](node-operators.md).
 
 ### Verification Checklist
 
@@ -233,9 +281,12 @@ A: Ensure you're accepting bech32m format (`sq1p...` or `ssq1p...`). If your
 pool software only validates Base58, you'll need to add bech32m support.
 
 **Q: Block template has large witness data**
-A: Dilithium signatures are ~2.4 KB each (vs. 72 bytes for ECDSA). This is
+A: ML-DSA-44 signatures are ~2.4 KB each (vs. 72 bytes for ECDSA). This is
 normal. SegWit witness discount (4:1) applies, so effective weight impact is
 ~600 WU per signature.
+
+**Q: `getblocktemplate` or `createauxblock` returns "Mining RPCs are disabled"**
+A: The node runs with the mainnet default. Restart it with `enablemining=1`.
 
 **Q: Can I merge-mine SOQ with my existing LTC pool?**
 A: Integrations with other pools are not supported at mainnet launch (see the
