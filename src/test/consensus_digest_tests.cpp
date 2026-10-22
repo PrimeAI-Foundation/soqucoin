@@ -126,6 +126,11 @@ void AbsorbConsensus(DigestBuilder& d, const Consensus::Params& c)
     // Moving it is a consensus change and must move the digest.
     d.I64(c.nMinBlock1Time);
 
+    // Chain id rule height (bead 0o4b0): 0 = no rule on every network until the
+    // release that schedules it on mainnet. Scheduling or moving it is a
+    // consensus change and must move the digest.
+    d.I64(c.nChainIdRequiredHeight);
+
     // PAT mandatory-commitment height (doc/PAT_BLOCK_ATTESTATION.md sec. 7).
     // 0 = never mandatory on every network today; scheduling it is a consensus
     // change and must move the digest.
@@ -769,8 +774,16 @@ BOOST_AUTO_TEST_CASE(consensus_digest_is_pinned)
     // testnet and regtest are still inert on every sampled tier with no vector
     // compiled in, so their absorbed words are unchanged. The version bump is not
     // a consensus input.
+    //
+    // Moved from bdc9cff6... on 2026-10-21 when AbsorbConsensus gained
+    // nChainIdRequiredHeight, the height the chain id rule applies from (bead
+    // 0o4b0). A COVERAGE change only: the field is 0 on every sampled tier of
+    // every network, so the one new I64 per sampled height is 0 everywhere and
+    // no rule changed on any network. The release that schedules the rule on
+    // mainnet sets that word to the scheduled height on every mainnet tier and
+    // re-pins again, as the block-1 gate's arming did.
     const std::string expected =
-        "bdc9cff6dc20879ef59d099766a9cfb06c35bbec5b8c2ad397c907a836dc7520";
+        "f36f70cbc1bedebc1cbf099284526e4c02f57ff96281044d45a239713a4eb09d";
 
     BOOST_CHECK_MESSAGE(digest.ToString() == expected,
         "consensus digest is " + digest.ToString() + ", expected " + expected +

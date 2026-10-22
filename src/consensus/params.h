@@ -143,6 +143,18 @@ struct Params {
     bool fStrictChainId;
     bool fAllowLegacyBlocks;
     int32_t nAuxpowStartHeight = 0;  // Height at which AuxPoW blocks become valid (mainnet: 0 = from genesis)
+    /** Chain id rule. From this height every block that is not a legacy block
+     *  (CPureBlockHeader::IsLegacy) must carry nAuxpowChainId in the high bits
+     *  of its version, merge-mined or not: Dogecoin's form of the strict chain
+     *  id check, which completes the merge-mined-only check in
+     *  CheckAuxPowProofOfWork. 0 = no rule (the convention of nMaxReorgDepth
+     *  and nMinBlock1Time). Mainnet carries 0 until the release that schedules
+     *  it; stagenet stays 0 (its history holds merge-mined blocks with chain id
+     *  0); regtest arms it with -chainidrequiredheight. Checked by
+     *  CheckChainIdRule (validation.cpp) at two sites: ContextualCheckBlockHeader
+     *  for every header on arrival, and ContextualCheckBlock for the block's own
+     *  header when its data is accepted. */
+    int32_t nChainIdRequiredHeight = 0;
 
     /** Height-aware consensus parameters */
     uint32_t nHeightEffective;       // When these parameters come into use
