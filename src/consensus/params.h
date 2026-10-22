@@ -150,8 +150,10 @@ struct Params {
      *  CheckAuxPowProofOfWork. 0 = no rule (the convention of nMaxReorgDepth
      *  and nMinBlock1Time). Mainnet carries 0 until the release that schedules
      *  it; stagenet stays 0 (its history holds merge-mined blocks with chain id
-     *  0); regtest arms it with -chainidrequiredheight. Checked in
-     *  ContextualCheckBlockHeader. */
+     *  0); regtest arms it with -chainidrequiredheight. Checked by
+     *  CheckChainIdRule (validation.cpp) at two sites: ContextualCheckBlockHeader
+     *  for every header on arrival, and ContextualCheckBlock for the block's own
+     *  header when its data is accepted. */
     int32_t nChainIdRequiredHeight = 0;
 
     /** Height-aware consensus parameters */

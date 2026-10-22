@@ -10,15 +10,14 @@
 # network carries until a release schedules it. The unit test
 # (consensus_validation_tests, chainid_required_height) drives the check and
 # the miner in process; this covers what it cannot: the -chainidrequiredheight
-# regtest path through init and its startup line; the sequence the rule
-# completes the merge-mined-only check for, a merge-mined block and the parent
-# block that carries its proof of work, solved once and submitted as two
-# consecutive blocks of this chain, which both connect below the height and
-# whose parent is refused at it; the same parent arriving from a peer that has
-# no rule (refused with DoS 100, so the peer is dropped; a loopback peer is
-# never banned, only disconnected); the armed node's own blocks at the height;
-# the peer restarted with the rule, keeping the block it connected without it
-# until -reindex replays the block files; and the option's bounds.
+# regtest path through init and its startup line; a direct block without the
+# id, built with the scrypt helper as the parent of a merge-mined block,
+# accepted below the height and refused at it; the same block arriving from a
+# peer that has no rule (refused with DoS 100, so the peer is dropped; a
+# loopback peer is never banned, only disconnected); the armed node's own
+# blocks at the height; the peer restarted with the rule, keeping the block it
+# connected without it until a replay of its block files; and the option's
+# bounds.
 #
 
 import os
@@ -63,12 +62,10 @@ class ChainIdRequiredHeightTest(BitcoinTestFramework):
             return f.read()
 
     def build_pair(self, node, t):
-        """A merge-mined block on node's tip and the parent block that proves
-        it: the parent's coinbase commits to the child through the merge-mining
-        tag, the parent builds on the child as the next block of this chain
-        with base version 4 and chain id 0, and one scrypt solution of the
-        parent header serves both. Returns the child's hash, its auxpow and the
-        parent block; nothing is submitted."""
+        """A merge-mined block on node's tip and its parent block, built as
+        the next block of this chain with base version 4 and chain id 0.
+        Returns the child's hash, its auxpow and the parent block; nothing is
+        submitted."""
         aux = node.getauxblock()
         child_hash = aux['hash']
         height = aux['height']
@@ -174,17 +171,18 @@ class ChainIdRequiredHeightTest(BitcoinTestFramework):
         stop_node(plain, 1)
         plain = self.nodes[1] = start_node(1, self.options.tmpdir,
                                            ["-debug", "-blockversion=4", "-chainidrequiredheight=%d" % HEIGHT, "-reindex"])
-        # RPC answers once genesis is processed while the replay goes on in
-        # the import thread, so wait for the replay to reach the parent, the
-        # last block in the file, and refuse it; then the tip is final.
-        refused = "AcceptBlockHeader: Consensus::ContextualCheckBlockHeader: %s, bad-chain-id" % parent.hash
+        # RPC answers once genesis is processed while the import thread still
+        # replays the file and only then activates the chain, so wait, bounded,
+        # on the tip itself: the parent is the last block in the file and is
+        # never indexed, so the child, once it is the tip, is the final tip.
+        # The parent's refusal is logged during the replay, before that.
         for _ in range(240):
-            if refused in self.debug_log(1):
+            if plain.getbestblockhash() == child_hash:
                 break
             time.sleep(0.5)
-        assert refused in self.debug_log(1)
-        assert_equal(plain.getblockcount(), HEIGHT - 1)
         assert_equal(plain.getbestblockhash(), child_hash)
+        assert_equal(plain.getblockcount(), HEIGHT - 1)
+        assert ("AcceptBlockHeader: Consensus::ContextualCheckBlockHeader: %s, bad-chain-id" % parent.hash) in self.debug_log(1)
 
         # 7. The regtest option is bounded to a block height: the largest value
         #    starts a node and is formatted on its startup line; a negative one

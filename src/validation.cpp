@@ -7255,10 +7255,9 @@ std::vector<unsigned char> GenerateCoinbaseCommitment(CBlock& block, const CBloc
  * nAuxpowChainId in the high bits of its version, merge-mined or not:
  * Dogecoin's form of the strict chain id check. CheckAuxPowProofOfWork
  * already requires it of a block with an auxpow; this requires it of a direct
- * proof-of-work block too, so that with the parent-side rule in CAuxPow::check
- * (a parent must not carry our chain id) no merge-mining parent is a valid
- * header of this chain from the height on. A function of the header and the
- * parameters alone, so DoS 100 as for the other header rules of its kind.
+ * proof-of-work block too, which is the upstream form. A function of the
+ * header and the parameters alone, so DoS 100 as for the other header rules
+ * of its kind.
  * Height 0 is never at or above a height greater than 0, so genesis is exempt
  * on every network.
  *

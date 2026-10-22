@@ -97,10 +97,11 @@ bool CheckAuxPowProofOfWork(const CBlockHeader& block, const Consensus::Params& 
        require every solo block (or in-process test block) to carry the chain id.
        The complementary parent-side check (auxpow.cpp: parent must NOT carry our
        chain id) blocks self-merge-mining PoW reuse. From
-       Consensus::Params::nChainIdRequiredHeight, ContextualCheckBlockHeader
-       requires the chain id of every non-legacy block, direct proof-of-work
-       included, which completes the upstream form; below that height, and on
-       a network where it is 0, this merge-mined-only check is the whole rule. */
+       Consensus::Params::nChainIdRequiredHeight, CheckChainIdRule (validation.cpp,
+       at the header check and again at block acceptance) requires the chain id
+       of every non-legacy block, direct proof-of-work included, which completes
+       the upstream form; below that height, and on a network where it is 0,
+       this merge-mined-only check is the whole rule. */
     if (block.IsAuxpow() && params.fStrictChainId && block.GetChainId() != params.nAuxpowChainId)
         return error("%s : block does not have our chain ID"
                      " (got %d, expected %d, full nVersion %d)",
