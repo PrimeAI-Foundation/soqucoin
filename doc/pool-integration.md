@@ -68,21 +68,22 @@ soqucoin-cli getnetworkhashps     # Network hash rate estimate
 soqucoin-cli getblockcount        # Current block height
 ```
 
-### Wallet Operations
+### Payouts
+
+Payouts are signed outside the node. The Go SDK
+([github.com/soqucoin-labs/soqucoin-sdk](https://github.com/soqucoin-labs/soqucoin-sdk))
+derives keys and addresses, builds and signs transactions in your own
+infrastructure, and uses the node only to read the chain and broadcast; its
+`docs/EXCHANGE_INTEGRATION.md` describes that path, including the sizes of
+ML-DSA-44 keys and signatures and the indexer the SDK reads unspent outputs
+from. The node's built-in wallet (present in the Linux and Windows builds) is
+not part of a pool integration: run the pool node with `disablewallet=1`, as
+every node we operate does. A wallet rescan holds the node's chain lock for as
+long as it runs, and every RPC, the mining RPCs included, waits on it.
 
 ```bash
-soqucoin-cli getnewaddress "" bech32m    # Generate payout address
-soqucoin-cli getbalance                  # Check balance
-soqucoin-cli sendtoaddress <addr> <amt>  # Send payout
-soqucoin-cli validateaddress <addr>      # Validate miner address
+soqucoin-cli validateaddress <addr>      # Validate miner address (isdilithium)
 ```
-
-The node's wallet is one way to hold and pay SOQ. The other is the Go SDK
-([github.com/soqucoin-labs/soqucoin-sdk](https://github.com/soqucoin-labs/soqucoin-sdk)),
-which derives keys, builds and signs transactions in your own infrastructure
-and uses the node only to read the chain and broadcast; its
-`docs/EXCHANGE_INTEGRATION.md` describes that path, including the sizes of
-ML-DSA-44 keys and signatures.
 
 ---
 
@@ -102,6 +103,10 @@ rpcport=33389          # mainnet
 # Default is 1 on every network except mainnet, where the default is 0; a pool
 # node opts in.
 enablemining=1
+
+# The node's wallet is not part of a pool integration; payouts are signed with
+# the SDK in your own infrastructure (see Payouts above).
+disablewallet=1
 
 # Optional: index every transaction, so getrawtransaction answers for any txid.
 # Set it before the first start; adding it later needs -reindex-chainstate.
@@ -271,10 +276,10 @@ differs, the node is on another chain and that guide says what to do.
 ### Verification Checklist
 
 1. ✅ Can connect to P2P network and sync blocks
-2. ✅ Can generate bech32m addresses via RPC
+2. ✅ Can derive bech32m payout addresses with the SDK
 3. ✅ Can create block templates via `getblocktemplate`
 4. ✅ Can validate miner addresses via `validateaddress`
-5. ✅ Can send payouts via `sendtoaddress`
+5. ✅ Can build, sign and broadcast a payout with the SDK (`sendrawtransaction`)
 6. ✅ Block notifications work (ZMQ or polling)
 7. ✅ AuxPoW blocks submit successfully (if supporting merged mining)
 
