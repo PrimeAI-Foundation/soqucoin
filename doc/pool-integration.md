@@ -204,9 +204,11 @@ soqucoin-cli createauxblock <payout_address>
 soqucoin-cli submitauxblock <hash> <serialized_auxpow>
 ```
 
-`coinbasevalue` is in the smallest unit, 100,000,000 per SOQ: 10,000,000,000,000
-is the 100,000 SOQ block reward. The block's version field already carries the
-chain ID; the node sets it.
+`coinbasevalue` is the subsidy plus the fees of the transactions in the
+template, in the smallest unit (100,000,000 per SOQ): 10,000,000,000,000 for
+the 100,000 SOQ subsidy alone, more when the template carries fees, so use the
+returned value. The block's version field already carries the chain ID; the
+node sets it.
 
 ---
 
