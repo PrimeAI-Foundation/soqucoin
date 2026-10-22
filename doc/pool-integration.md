@@ -108,8 +108,9 @@ enablemining=1
 # the SDK in your own infrastructure (see Payouts above).
 disablewallet=1
 
-# Optional: index every transaction, so getrawtransaction answers for any txid.
-# Set it before the first start; adding it later needs -reindex-chainstate.
+# Required for the SDK payout path: the SDK confirms a payout by transaction
+# id (getrawtransaction), which needs the index once the payout's outputs are
+# spent. Set it before the first start; adding it later needs -reindex-chainstate.
 txindex=1
 
 # Allow pool server to connect
