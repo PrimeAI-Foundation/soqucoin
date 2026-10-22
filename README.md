@@ -164,7 +164,7 @@ Trust Model: Full cryptographic verification with witness data
 
 ### Prerequisites
 
-- C++11 compiler (C++14 and C++17 builds via `--enable-c++14` or `--enable-c++17`)
+- C++14 compiler (C++17 builds via `--enable-c++17`)
 - Boost 1.60.0+
 - OpenSSL 1.1+
 - libevent 2.1+
@@ -287,7 +287,7 @@ Soqucoin Core has run mainnet since 13 October 2026. The consensus stack complet
 ### Code Style
 
 This project follows [Bitcoin Core contribution guidelines](CONTRIBUTING.md):
-- C++11 by default (C++14 and C++17 via `--enable-c++14` and `--enable-c++17`)
+- C++14 required; C++17 optional via `--enable-c++17`
 - 4-space indentation
 - No trailing whitespace
 - GPG-signed commits where possible

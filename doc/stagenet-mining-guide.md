@@ -256,14 +256,17 @@ Payouts are processed every 10 minutes via PPLNS. Minimum payout: 1 SOQ.
 > may be wiped (chain reset) at any time during development. Do not use stagenet
 > for anything other than testing.
 
-> **🛡️ Post-Quantum Security**: Stagenet runs the same consensus code as mainnet
-> will at launch. Dilithium (ML-DSA-44) signatures, USDSOQ stablecoin opcodes,
-> and Lattice-BP++ privacy primitives are all active and available for testing.
+> **🛡️ Post-Quantum Security**: Stagenet runs the same consensus code as mainnet with
+> different activation settings. Several script features that are not scheduled on
+> mainnet (the USDSOQ stablecoin opcodes among them) are active on stagenet from block 0,
+> merge mining starts at block 100 instead of block 0, and the strict chain-id check on
+> merge-mined blocks is off. ML-DSA-44 (Dilithium) signatures are live on both. A test
+> that passes on stagenet is not by itself proof of mainnet behaviour.
 
 ---
 
 ## Getting Help
 
-- **Discord**: [Soqucoin Community](https://discord.gg/soqucoin)
+- **Telegram**: [t.me/officialsoqucoin](https://t.me/officialsoqucoin)
 - **GitHub Issues**: [soqucoin/soqucoin](https://github.com/soqucoin/soqucoin/issues)
 - **Website**: [soqu.org](https://soqu.org)

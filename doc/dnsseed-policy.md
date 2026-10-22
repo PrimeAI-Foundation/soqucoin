@@ -43,8 +43,8 @@ related to the DNS seed operation.
 
 If these expectations cannot be satisfied the operator should
 discontinue providing services and contact the active Soqucoin
-Core development team as well as posting on
-[Soqucoin Dev](https://reddit.com/r/soqucoindev).
+Core development team by opening a
+[GitHub issue](https://github.com/soqucoin/soqucoin/issues).
 
 Behavior outside of these expectations may be reasonable in some
 situations but should be discussed in public in advance.
