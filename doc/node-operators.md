@@ -132,7 +132,7 @@ Two commands tell you everything:
 | Syncing | climbing | more than 0 | Your node is catching up |
 | Caught up | about one new block a minute | more than 0 | Done. Now check the hashes (step 4) |
 
-A node that still shows 0 and 0 after ten minutes isn't finding peers. Check that the machine is online and that you run release 2.5.1 or newer. A synced node won't accept a rewrite of the chain 288 blocks deep or more. That protection only covers a node that's already synced, though. A node downloading the chain for the first time doesn't have it yet, which is why step 4 has you check two hashes.
+A node that still shows 0 and 0 after ten minutes isn't finding peers. Check that the machine is online and that you run release 2.5.1 or newer. A synced node rejects a block that builds on a fork 288 blocks deep or more, with one exception: a competing chain whose headers it accepted while it was still syncing. A node downloading the chain for the first time doesn't have the protection yet. Both are why step 4 has you check two hashes.
 
 Opening port 33388 on your router or firewall is optional. Your node syncs fine without it. Opening it lets other nodes connect to yours.
 

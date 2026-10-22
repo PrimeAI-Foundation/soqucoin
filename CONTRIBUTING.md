@@ -9,7 +9,7 @@ Soqucoin is a post-quantum cryptocurrency. Its mainnet has run since 13 October 
 ## Development workflow
 
 1. **Fork and branch**: create a feature branch from `main`, the default branch. Pull requests target `main`.
-2. **Code style**: Bitcoin Core's conventions, written up in [doc/developer-notes.md](doc/developer-notes.md). C++11 by default (C++14 and C++17 via `--enable-c++14` and `--enable-c++17`), 4-space indentation, no trailing whitespace.
+2. **Code style**: Bitcoin Core's conventions, written up in [doc/developer-notes.md](doc/developer-notes.md). A C++14 compiler is required (`configure` checks for it); C++17 is optional with `--enable-c++17`. 4-space indentation, no trailing whitespace.
 3. **Testing**: the CI workflow runs on every pull request. Run the same checks first:
    * `make check` for the unit tests;
    * `qa/pull-tester/rpc-tests.py` for the functional tests. CI runs the Soqucoin-specific set: `auxpow.py`, `pat_basic.py`, `unspendable-outputs.py`, `witness-prune-serving.py`, `witness-prune-ibd.py`, `wallet-encryption.py`, `pq-address-rpcs.py`, `pq-wallet-key-handling.py`, `block1-time-gate.py`, `chainid-required-height.py` and `latticefold_basic.py`;
