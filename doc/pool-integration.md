@@ -81,6 +81,13 @@ not part of a pool integration: run the pool node with `disablewallet=1`, as
 every node we operate does. A wallet rescan holds the node's chain lock for as
 long as it runs, and every RPC, the mining RPCs included, waits on it.
 
+The pool's own keys are a keypair made with the SDK's `keys` package and
+kept in its encrypted keystore; that key's `sq1p` address is the one given to
+`createauxblock`. Two SDK examples cover the whole path: `examples/generate_address`
+(a keypair and its address) and `examples/pool_payout` (a batch payout tool:
+UTXO selection with a persistent spent set, a pre-check against the node, then
+build, sign, broadcast and confirm, with a circuit breaker).
+
 ```bash
 soqucoin-cli validateaddress <addr>      # Validate miner address (isdilithium)
 ```
@@ -142,6 +149,11 @@ the ZMQ block notifications).
 | Mainnet | Bech32m (witness v1) | `sq1p` | `sq1pxyz...` |
 | Stagenet | Bech32m (witness v1) | `ssq1p` | `ssq1pxyz...` |
 | Testnet / Regtest | Bech32m (witness v1) | `sq1p` | shares the mainnet HRP; select the network by RPC port, not by address prefix |
+
+A miner gets an `sq1p` address from SoquShield (the self-custodial wallet, on
+Google Play and on TestFlight for iOS) or from the browser generator at
+[soqu.org/wallet](https://soqu.org/wallet/); the docs'
+[first-transaction page](https://soqu.org/docs/get-started/first-tx/) walks through it.
 
 **Important**: Do not pay Legacy Base58 addresses. They stand for pay-to-pubkey-hash and
 pay-to-script-hash outputs, which the script layer cannot spend. Mainnet and stagenet nodes refuse
