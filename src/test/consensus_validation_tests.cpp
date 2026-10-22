@@ -387,6 +387,148 @@ BOOST_AUTO_TEST_CASE(block1_time_gate)
     BOOST_CHECK(ContextualCheckBlockHeader(hdr2, height2, chainActive.Tip(), kGate + 1));
 }
 
+/**
+ * Chain id rule (Consensus::Params::nChainIdRequiredHeight, bead 0o4b0): from
+ * the height every block that is not a legacy block must carry the chain id
+ * 0x5351 in the high bits of its version, merge-mined or not; 0 = no rule, the
+ * regtest default (regtest arms it here as -chainidrequiredheight does).
+ * Driven through ContextualCheckBlockHeader on regtest with the reject string
+ * and the DoS score, one height either side of the arming height, on every
+ * version shape a header can take: the direct block the miner stamps, the
+ * same without the id, with another id and with the sign bit set, the
+ * merge-mined shape with and without the id, and a legacy block; and through
+ * the production miner, whose template at the height passes.
+ */
+namespace {
+struct RegtestChainIdRule {
+    explicit RegtestChainIdRule(int32_t nHeight) { UpdateRegtestChainIdRequiredHeight(nHeight); }
+    ~RegtestChainIdRule() { UpdateRegtestChainIdRequiredHeight(0); }
+};
+
+// Builds the next block through the production miner, solves it and connects it.
+void MineRegtestBlock(const CChainParams& cp, const CScript& spk)
+{
+    const int nHeight = chainActive.Height() + 1;
+    std::unique_ptr<CBlockTemplate> tmpl = BlockAssembler(cp).CreateNewBlock(spk, true);
+    BOOST_REQUIRE(tmpl != nullptr);
+    CBlock block = tmpl->block;
+    block.hashMerkleRoot = BlockMerkleRoot(block);
+    while (!CheckProofOfWork(block.GetPoWHash(), block.nBits, cp.GetConsensus(nHeight))) {
+        ++block.nNonce;
+    }
+    std::shared_ptr<const CBlock> shared = std::make_shared<const CBlock>(block);
+    BOOST_REQUIRE(ProcessNewBlock(cp, shared, true, nullptr));
+    BOOST_REQUIRE_EQUAL(chainActive.Height(), nHeight);
+}
+}
+
+BOOST_AUTO_TEST_CASE(chainid_required_height)
+{
+    const CChainParams& cp = Params();
+    const CScript spk = CScript() << OP_1 << std::vector<unsigned char>(32, 0xA1);
+    BOOST_REQUIRE_EQUAL(cp.GetConsensus(0).nAuxpowChainId, 0x5351);
+    BOOST_REQUIRE_EQUAL(cp.GetConsensus(0).nChainIdRequiredHeight, 0);
+    BOOST_REQUIRE_EQUAL(chainActive.Height(), 0);
+
+    // The version layout (CPureBlockHeader): the base version in the low
+    // byte, the auxpow flag at bit 8, the chain id from bit 16.
+    const int32_t kDirect = 0x53510004;            // what the miner stamps: base 4, chain id 0x5351
+    const int32_t kDirectNoId = 0x00000004;        // base 4, chain id 0: the -blockversion=4 shape
+    const int32_t kDirectOtherId = 0x00620004;     // base 4, chain id 0x62
+    const int32_t kSignBit = (int32_t)0x80000004;  // base 4 with the sign bit: GetChainId is negative
+    const int32_t kAuxpow = 0x53510104;            // merge-mined, chain id 0x5351
+    const int32_t kAuxpowNoId = 0x00000104;        // merge-mined, chain id 0
+    const int32_t kLegacy = 1;                     // a legacy block: exempt, Dogecoin's form
+
+    // Judges a header of the given version at the next height through the
+    // production check. The miner's template supplies everything else a valid
+    // header needs, so a refusal is the version's alone.
+    std::string reason;
+    int nDoS = 0;
+    auto judge = [&](int32_t nVersion) {
+        std::unique_ptr<CBlockTemplate> tmpl = BlockAssembler(cp).CreateNewBlock(spk, true);
+        BOOST_REQUIRE(tmpl != nullptr);
+        CBlockHeader hdr = tmpl->block.GetBlockHeader();
+        hdr.nVersion = nVersion;
+        CValidationState state;
+        const bool ok = ContextualCheckBlockHeader(hdr, state, chainActive.Tip(), GetAdjustedTime());
+        reason = state.GetRejectReason();
+        nDoS = 0;
+        if (!ok) {
+            BOOST_CHECK(state.IsInvalid(nDoS));
+        }
+        return ok;
+    };
+
+    // The legacy exemption, at height 1, where regtest still allows legacy
+    // blocks (the tier from the AuxPoW start does not): with the rule armed
+    // from height 1 a legacy header passes and a direct header without the id
+    // does not. Merge-mined shapes are not judged here, where
+    // early-auxpow-block answers first.
+    {
+        RegtestChainIdRule early(1);
+        BOOST_CHECK_MESSAGE(judge(kLegacy), "legacy header refused at height 1: " + reason);
+        BOOST_CHECK(judge(kDirect));
+        BOOST_CHECK(!judge(kDirectNoId));
+        BOOST_CHECK_EQUAL(reason, "bad-chain-id");
+        BOOST_CHECK_EQUAL(nDoS, 100);
+    }
+    BOOST_REQUIRE_EQUAL(cp.GetConsensus(1).nChainIdRequiredHeight, 0);
+
+    // To the regtest AuxPoW start, so that a merge-mined shape at the next
+    // height is judged by this rule and not by early-auxpow-block. The rule
+    // is armed two heights on: the next header is below it, the one after at
+    // it.
+    const int kAuxpowStart = cp.GetConsensus(0).nAuxpowStartHeight;
+    BOOST_REQUIRE_EQUAL(kAuxpowStart, 20);
+    while (chainActive.Height() < kAuxpowStart) {
+        MineRegtestBlock(cp, spk);
+    }
+    const int32_t kArm = chainActive.Height() + 2;
+    RegtestChainIdRule rule(kArm);
+    BOOST_CHECK_EQUAL(cp.GetConsensus(0).nChainIdRequiredHeight, kArm);
+    BOOST_CHECK_EQUAL(cp.GetConsensus(kArm).nChainIdRequiredHeight, kArm);
+
+    // Below the height every chain id passes: what every node does today. A
+    // legacy header here draws late-legacy-block from the neighbour above
+    // this rule, since regtest allows none from the AuxPoW start.
+    BOOST_REQUIRE_EQUAL(chainActive.Height() + 1, kArm - 1);
+    for (int32_t v : {kDirect, kDirectNoId, kDirectOtherId, kSignBit, kAuxpow, kAuxpowNoId}) {
+        BOOST_CHECK_MESSAGE(judge(v), strprintf("version 0x%08x refused below the height: %s", v, reason));
+    }
+    BOOST_CHECK(!judge(kLegacy));
+    BOOST_CHECK_EQUAL(reason, "late-legacy-block");
+    MineRegtestBlock(cp, spk);
+
+    // At the height the stamped shapes pass, merge-mined or not; every other
+    // chain id draws bad-chain-id with DoS 100; and a legacy header still
+    // draws the neighbour's reject, not this rule's.
+    BOOST_REQUIRE_EQUAL(chainActive.Height() + 1, kArm);
+    for (int32_t v : {kDirect, kAuxpow}) {
+        BOOST_CHECK_MESSAGE(judge(v), strprintf("version 0x%08x refused at the height: %s", v, reason));
+    }
+    for (int32_t v : {kDirectNoId, kDirectOtherId, kSignBit, kAuxpowNoId}) {
+        BOOST_CHECK_MESSAGE(!judge(v), strprintf("version 0x%08x accepted at the height", v));
+        BOOST_CHECK_EQUAL(reason, "bad-chain-id");
+        BOOST_CHECK_EQUAL(nDoS, 100);
+    }
+    BOOST_CHECK(!judge(kLegacy));
+    BOOST_CHECK_EQUAL(reason, "late-legacy-block");
+
+    // The miner's own template at the height passes TestBlockValidity and
+    // connects, and the rule holds above the height.
+    MineRegtestBlock(cp, spk);
+    BOOST_REQUIRE_EQUAL(chainActive.Height(), kArm);
+    BOOST_CHECK(judge(kDirect));
+    BOOST_CHECK(!judge(kDirectNoId));
+    BOOST_CHECK_EQUAL(reason, "bad-chain-id");
+    BOOST_CHECK_EQUAL(nDoS, 100);
+
+    // Disarmed (0 = no rule) the same shape passes again at the same height.
+    UpdateRegtestChainIdRequiredHeight(0);
+    BOOST_CHECK_MESSAGE(judge(kDirectNoId), "version without the id refused with no rule: " + reason);
+}
+
 // ============================================
 // CROSS-REFERENCE NOTES (not tests)
 // ============================================

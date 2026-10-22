@@ -452,6 +452,7 @@ std::string HelpMessage(HelpMessageMode mode)
         strUsage += HelpMessageOpt("-migrationheight=<n>", "Height at which the genesis-migration allocation rule applies (regtest-only; requires -migrationoutputs)");
         strUsage += HelpMessageOpt("-migrationtotal=<n>", "Override the armed nMigrationTotal in sats (regtest-only; default: the sum of -migrationoutputs, override exists to test the mismatch reject)");
         strUsage += HelpMessageOpt("-minblock1time=<n>", "Minimum nTime of the block at height 1, a unix time (regtest-only; 0 = no gate; mainnet carries 1791903600)");
+        strUsage += HelpMessageOpt("-chainidrequiredheight=<n>", "Height from which every non-legacy block must carry the chain id in its version (regtest-only; 0 = no rule)");
     }
     std::string debugCategories = "addrman, alert, bench, cmpctblock, coindb, db, http, libevent, lock, mempool, mempoolrej, net, proxy, prune, rand, reindex, rpc, selectcoins, tor, zmq"; // Don't translate these and qt below
     if (mode == HMM_BITCOIN_QT)
@@ -1266,6 +1267,18 @@ bool AppInitParameterInteraction()
         }
         UpdateRegtestMinBlock1Time(nMinBlock1Time);
     }
+    if (IsArgSet("-chainidrequiredheight")) {
+        // The chain id rule's height for testing. Regtest only: on real
+        // networks the height is consensus.
+        if (!chainparams.MineBlocksOnDemand()) {
+            return InitError("-chainidrequiredheight may only be set on regtest.");
+        }
+        int32_t nChainIdRequiredHeight;
+        if (!ParseInt32(GetArg("-chainidrequiredheight", ""), &nChainIdRequiredHeight) || nChainIdRequiredHeight < 0) {
+            return InitError("Invalid -chainidrequiredheight (expected a block height from 0 to 2147483647)");
+        }
+        UpdateRegtestChainIdRequiredHeight(nChainIdRequiredHeight);
+    }
     // On every network, say at startup which genesis-migration constants this
     // binary enforces. A node whose constants differ from the network's rejects
     // the armed block, so this line is what an operator checks before the node
@@ -1288,6 +1301,17 @@ bool AppInitParameterInteraction()
                       DateTimeStrFormat("%Y-%m-%dT%H:%M:%SZ", nMinBlock1Time));
         } else {
             LogPrintf("Block 1 time gate: none\n");
+        }
+        // The chain id rule this binary enforces, read from the tier that
+        // validates the height it applies from: the line an operator checks
+        // against the published height before the node reaches it.
+        const int32_t nChainIdHeight = chainparams.GetConsensus(0).nChainIdRequiredHeight;
+        const Consensus::Params& chainIdTier = chainparams.GetConsensus(nChainIdHeight > 0 ? nChainIdHeight : 0);
+        if (chainIdTier.nChainIdRequiredHeight > 0) {
+            LogPrintf("Chain id rule: 0x%x required from height %d\n",
+                      chainIdTier.nAuxpowChainId, chainIdTier.nChainIdRequiredHeight);
+        } else {
+            LogPrintf("Chain id rule: none\n");
         }
     }
     return true;

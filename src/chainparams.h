@@ -166,6 +166,14 @@ void UpdateRegtestMaxReorgDepth(int nMaxReorgDepth);
 void UpdateRegtestMinBlock1Time(int64_t nMinBlock1Time);
 
 /**
+ * Sets the height the chain id rule applies from on every regtest tier
+ * (0 = no rule). Regtest-only, for -chainidrequiredheight and the unit
+ * tests; on real networks the height is consensus
+ * (Consensus::Params::nChainIdRequiredHeight).
+ */
+void UpdateRegtestChainIdRequiredHeight(int32_t nHeight);
+
+/**
  * Arms the genesis-migration allocation rule on regtest
  * (DL-GENESIS-MIGRATION-IMPLEMENTATION §A1). Sets the three consensus constants
  * exactly as given — hash, total and height are taken independently so tests can

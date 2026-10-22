@@ -451,6 +451,12 @@ public:
         consensus.fStrictChainId = true;
         consensus.fAllowLegacyBlocks = true; // Allow both legacy Scrypt AND AuxPoW blocks
         consensus.nAuxpowStartHeight = 0;    // AuxPoW from genesis — merge mining available from block 0
+        // Chain id rule (Consensus::Params::nChainIdRequiredHeight): from this
+        // height every non-legacy block must carry chain id 0x5351, merge-mined
+        // or not. 0 = not scheduled. Set here, before the tier copies below, so
+        // every tier GetConsensus returns carries the same value; the release
+        // that schedules it sets the height here and nowhere else.
+        consensus.nChainIdRequiredHeight = 0;
         consensus.nHeightEffective = 0;
 
         // CONSENSUS FIX (DL-MAINNET-DIFFICULTY-TRANSITION):
@@ -884,6 +890,7 @@ public:
         consensus.nHeightEffective = 0;
         consensus.fAllowLegacyBlocks = true; // Allow both legacy Scrypt AND AuxPoW blocks
         consensus.nAuxpowStartHeight = 0;    // AuxPoW from genesis — mirror mainnet (bead lnq)
+        consensus.nChainIdRequiredHeight = 0; // Chain id rule: mirrors mainnet, as fStrictChainId does
 
         // DigiShield + AuxPoW from block 1 — mirrors mainnet's merged tier.
         // (bead soqucoin-build-lnq: the previous 145000/157500/158100 tier
@@ -1131,6 +1138,7 @@ public:
         consensus.fStrictChainId = true;     // lw7 — regtest is ephemeral; mirror mainnet
         consensus.fAllowLegacyBlocks = true; // Allow both legacy Scrypt AND AuxPoW blocks
         consensus.nAuxpowStartHeight = 20;   // Regtest: match auxpowConsensus.nHeightEffective
+        consensus.nChainIdRequiredHeight = 0; // No chain id rule; tests arm it via -chainidrequiredheight (see UpdateChainIdRequiredHeight)
 
         // Soqucoin parameters
         consensus.fSimplifiedRewards = true;
@@ -1253,6 +1261,15 @@ public:
         consensus.nMinBlock1Time = nMinBlock1Time;
         digishieldConsensus.nMinBlock1Time = nMinBlock1Time;
         auxpowConsensus.nMinBlock1Time = nMinBlock1Time;
+    }
+
+    void UpdateChainIdRequiredHeight(int32_t nHeight)
+    {
+        // All three structs, as UpdateMaxReorgDepth above (bead tofg): the
+        // height the rule applies from resolves to whichever tier holds it.
+        consensus.nChainIdRequiredHeight = nHeight;
+        digishieldConsensus.nChainIdRequiredHeight = nHeight;
+        auxpowConsensus.nChainIdRequiredHeight = nHeight;
     }
 
     void UpdateMigrationParams(const uint256& hashOutputs, CAmount nTotal, int nHeight,
@@ -1545,6 +1562,10 @@ public:
         consensus.nHeightEffective = 0;
         consensus.fAllowLegacyBlocks = true;
         consensus.nAuxpowStartHeight = 100;  // Stagenet Vanguard Window: solo blocks 0-99, AuxPoW from 100
+        // The chain id rule stays off here for the reason fStrictChainId is
+        // false above: the live stagenet chain holds merge-mined blocks with
+        // chain id 0, and a rule from any height would reject them.
+        consensus.nChainIdRequiredHeight = 0;
 
         // Digishield from block 1
         digishieldConsensus = consensus;
@@ -1740,6 +1761,11 @@ void UpdateRegtestMaxReorgDepth(int nMaxReorgDepth)
 void UpdateRegtestMinBlock1Time(int64_t nMinBlock1Time)
 {
     regTestParams.UpdateMinBlock1Time(nMinBlock1Time);
+}
+
+void UpdateRegtestChainIdRequiredHeight(int32_t nHeight)
+{
+    regTestParams.UpdateChainIdRequiredHeight(nHeight);
 }
 
 void UpdateRegtestMigrationParams(const uint256& hashOutputs, CAmount nTotal, int nHeight,
