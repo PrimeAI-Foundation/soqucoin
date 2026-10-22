@@ -122,10 +122,12 @@ zmqpubhashblock=tcp://127.0.0.1:28334
 zmqpubrawtx=tcp://127.0.0.1:28334
 ```
 
-A node whose tip is more than 24 hours old (`maxtipage`, default 86400)
-reports initial block download and refuses to serve work until it has caught
-up. Let a fresh node sync before you point a stratum server at it; the chain is
-small and a sync takes minutes.
+A node that starts with a tip more than 24 hours old (`maxtipage`, default
+86400) reports initial block download and refuses to serve work until it has
+caught up; the chain is small and a sync takes minutes. That state ends once
+the node has synced and does not return, so a node that later falls behind
+keeps serving work while it has peers: watch the tip's age and the block
+height yourself (`getblockchaininfo`, or the ZMQ block notifications).
 
 ---
 
@@ -237,7 +239,7 @@ chain ID; the node sets it.
 | Signature Algorithm | ML-DSA-44 (NIST FIPS 204) |
 | AuxPoW | Enabled from block 0; chain ID 0x5351; strict chain ID on mainnet |
 | Coinbase Maturity | 288 blocks |
-| Reorganisation horizon | A synced node rejects a fork 288 blocks deep or more |
+| Reorganisation horizon | A node rejects a new header that builds on a fork 288 blocks deep or more (`bad-fork-beyond-finality`); the check runs when a header is first accepted and is skipped during initial block download, so headers accepted earlier are not re-checked |
 | P2P Protocol Version | 70015 |
 
 ---
@@ -261,8 +263,10 @@ the node itself. The block explorer at
 [explorer.soqu.org](https://explorer.soqu.org) shows every block with its
 AuxPoW parent, and its API answers `/api/blocks/tip/height`,
 `/api/block/<height or hash>`, `/api/tx/<txid>` and `/api/mining/hashrate`.
-To check that a node is on the live chain, compare `getblockhash 1` with the
-hash in [node-operators.md](node-operators.md).
+To check that a node is on the live chain, compare `getblockhash 1` and
+`getblockhash 1502` with the two hashes in [node-operators.md](node-operators.md)
+(block 1, and block 1,502, where the network opened to outside nodes); if either
+differs, the node is on another chain and that guide says what to do.
 
 ### Verification Checklist
 
