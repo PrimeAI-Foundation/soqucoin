@@ -150,7 +150,7 @@ The design made activation contingent on audit completion. The reasons recorded 
 2. **Regulatory uncertainty:** Legal advice indicating the gateway creates unacceptable risk
 3. **Technical blockers:** L1 script limitations or Solana runtime issues
 
-The design was not deployed. pSOQ is a token on Solana. The path from pSOQ to SOQ is in legal review and details will be published when it is complete.
+The design was not deployed. pSOQ is a token on Solana. The one-time pSOQ to SOQ migration was committed in block 1 of mainnet on 13 October 2026 from the window of 29 September to 5 October 2026; the window closed and does not repeat, and pSOQ is not a wrapped or redeemable form of SOQ.
 
 ### Relayer Compromise Scenarios
 

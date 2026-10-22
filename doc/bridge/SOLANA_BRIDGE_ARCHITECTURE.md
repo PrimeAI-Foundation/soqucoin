@@ -238,9 +238,11 @@ Month 6+: Approaching full backing
 
 ### Disclosures
 
-**Current (September 2026):**
-> pSOQ is a token on Solana. It is not backed by SOQ. The path from pSOQ to SOQ is in
-> legal review and details will be published when it is complete.
+**Current (October 2026):**
+> pSOQ is a token on Solana. It is not backed by SOQ. The one-time pSOQ to SOQ migration
+> was committed in block 1 of mainnet on 13 October 2026; the window of 29 September to
+> 5 October 2026 closed and does not repeat, and pSOQ is not a wrapped or redeemable form
+> of SOQ.
 
 **Drafted in the design for a gateway launch (not used):**
 > pSOQ Gateway Economics:
