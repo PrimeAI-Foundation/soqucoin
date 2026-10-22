@@ -5,7 +5,7 @@
 <h1 align="center">Soqucoin™ Core</h1>
 
 <p align="center">
-  <strong>A post-quantum Layer 1 with native ML-DSA-44 signatures. Running on stagenet; mainnet block 1 is scheduled for 13 October 2026 at 15:00 UTC.</strong>
+  <strong>A post-quantum Layer 1 with native ML-DSA-44 signatures, merge-mined on Scrypt. Mainnet live since 13 October 2026.</strong>
 </p>
 
 <p align="center">
@@ -45,7 +45,9 @@ Soqucoin is a Scrypt-based proof-of-work cryptocurrency that removes ECDSA from 
 | SoquObscura CT (LNP22/LaBRADOR) | ◻ Research | Not scheduled on any network |
 | Release v2.5.0 (stagenet) | ✅ Complete | Sep 2026 |
 | pSOQ to SOQ migration window | ✅ Closed | Sep 29 – Oct 5, 2026 |
-| Mainnet block 1 | 🔄 Scheduled | Oct 13, 2026, 15:00 UTC |
+| Mainnet block 1 | ✅ Complete | Oct 13, 2026, 15:38 UTC |
+| Network opened to outside nodes | ✅ Complete | Oct 14, 2026 |
+| Release v2.5.3 (stricter validation of peer messages) | ✅ Complete | Oct 20, 2026 |
 
 ---
 
@@ -180,12 +182,14 @@ make install  # optional
 
 ### Run a Node
 
-```bash
-# Stagenet (current active network)
-./src/soqucoind -stagenet -daemon -server -rpcuser=soqucoin -rpcpassword=YOUR_PASSWORD
+Release archives for Linux, macOS and Windows are on the [releases page](https://github.com/soqucoin/soqucoin/releases/latest). [doc/node-operators.md](doc/node-operators.md) walks through downloading and checking one, starting it, and confirming you are on the real chain.
 
-# Mainnet (from block 1, 13 October 2026 15:00 UTC; the first day is described in doc/node-operators.md)
+```bash
+# Mainnet (live since 13 October 2026)
 ./src/soqucoind -daemon -server -rpcuser=soqucoin -rpcpassword=YOUR_PASSWORD
+
+# Stagenet (the test network; see "Practicing on stagenet" in doc/node-operators.md)
+./src/soqucoind -stagenet -daemon -server -rpcuser=soqucoin -rpcpassword=YOUR_PASSWORD
 
 # Regtest (local development)
 ./src/soqucoind -regtest -daemon
@@ -217,6 +221,7 @@ SOQUPOOL is the only supported way to mine SOQ at mainnet launch. Support for ot
 | [contrib/solo-miner/README.md](contrib/solo-miner/README.md) | Solo mining stratum proxy for stagenet and development; not supported on mainnet at launch |
 | [doc/specifications/pat-specification.md](doc/specifications/pat-specification.md) | PAT wire format specification |
 | [Whitepaper](https://soqu.org/whitepaper/soqucoin_whitepaper.pdf) | Technical specification |
+| [Block explorer](https://explorer.soqu.org) | Mainnet blocks, transactions and addresses |
 
 ---
 
@@ -268,17 +273,16 @@ Note: Lattice-BP++ (SOQ-P002) is superseded by SoquObscura (SOQ-P010). LatticeFo
 
 ## Contributing
 
-### Pre-Launch Policy
+### Policy
 
-Soqucoin Core is in **pre-genesis final validation**. The consensus stack has completed external security audit and is undergoing final pre-mainnet testing. The audit reports are published by Halborn: [blockchain node audit](https://www.halborn.com/audits/soqucoin/soqucoin-blockchain-node-a4f1f7), [architecture assessment](https://www.halborn.com/audits/soqucoin/blockchain-architecture-assessment---added-days-907771), and a [case study](https://www.halborn.com/case-studies/post/case-study-halborn-secures-soqucoin-the-first-native-post-quantum-scrypt-pow-blockchain).
+Soqucoin Core has run mainnet since 13 October 2026. The consensus stack completed an external security audit before launch. The audit reports are published by Halborn: [blockchain node audit](https://www.halborn.com/audits/soqucoin/soqucoin-blockchain-node-a4f1f7), [architecture assessment](https://www.halborn.com/audits/soqucoin/blockchain-architecture-assessment---added-days-907771), and a [case study](https://www.halborn.com/case-studies/post/case-study-halborn-secures-soqucoin-the-first-native-post-quantum-scrypt-pow-blockchain).
 
-**How to contribute now:**
+**How to contribute:**
 
-1. **Report bugs** — Open a [GitHub Issue](https://github.com/soqucoin/soqucoin/issues)
-2. **Discuss features** — Join [GitHub Discussions](https://github.com/soqucoin/soqucoin/discussions)
-3. **Share test data** — Regtest blocks, fuzz corpora, ASIC screenshots
-
-> Pull requests will be enabled immediately after genesis. Contributors who help stress-test the chain will be credited in the launch paper.
+1. **Report bugs**: open a [GitHub Issue](https://github.com/soqucoin/soqucoin/issues). Security bugs go through [SECURITY.md](.github/SECURITY.md), never a public issue.
+2. **Discuss features**: join [GitHub Discussions](https://github.com/soqucoin/soqucoin/discussions)
+3. **Share test data**: regtest blocks, fuzz corpora, ASIC screenshots
+4. **Open a pull request** against `main`, following [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ### Code Style
 
@@ -286,7 +290,7 @@ This project follows [Bitcoin Core contribution guidelines](CONTRIBUTING.md):
 - C++11 by default (C++14 and C++17 via `--enable-c++14` and `--enable-c++17`)
 - 4-space indentation
 - No trailing whitespace
-- Signed commits required
+- GPG-signed commits where possible
 
 ---
 
@@ -295,14 +299,14 @@ This project follows [Bitcoin Core contribution guidelines](CONTRIBUTING.md):
 | Parameter | Value |
 |-----------|-------|
 | **Ticker** | SOQ |
-| **Algorithm** | Scrypt |
+| **Algorithm** | Scrypt, merge-mined (AuxPoW from block 0) |
 | **Block Time** | 1 minute |
 | **Initial Block Reward** | 100,000 SOQ |
 | **Halving Interval** | 250,000 blocks (~174 days) |
 | **Terminal Emission** | 2,500 SOQ perpetual (after block 1,000,000) |
 | **Supply Model** | Inflationary with declining rate |
 
-Block 1 of mainnet carries the result of the one-time pSOQ to SOQ migration window, open 29 September to 5 October 2026. The steps publish on 28 September at [soqucoin.org/migration](https://soqucoin.org/migration).
+Block 1 of mainnet (13 October 2026) carries the 70 outputs of the one-time pSOQ to SOQ migration, 328,627,412.935409 SOQ in total, from the window that ran from 29 September to 5 October 2026. The window closed and does not repeat; pSOQ is not a wrapped or redeemable form of SOQ. The final allocation list and its hash are published at [soqucoin.org/migration](https://soqucoin.org/migration).
 
 ---
 
