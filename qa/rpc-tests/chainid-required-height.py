@@ -17,7 +17,8 @@
 # whose parent is refused at it; the same parent arriving from a peer that has
 # no rule (refused with DoS 100, so the peer is dropped; a loopback peer is
 # never banned, only disconnected); the armed node's own blocks at the height;
-# and the option's bounds.
+# the peer restarted with the rule, keeping the block it connected without it
+# until -reindex replays the block files; and the option's bounds.
 #
 
 import os
@@ -158,7 +159,26 @@ class ChainIdRequiredHeightTest(BitcoinTestFramework):
         for h in (HEIGHT, HEIGHT + 1):
             assert_equal(armed.getblock(armed.getblockhash(h))['version'], STAMPED_VERSION)
 
-        # 6. The regtest option is bounded to a block height: the largest value
+        # 6. The peer connected the parent before it carried the rule. A node
+        #    trusts its index as it stands on restart, for this rule as for
+        #    every height-activated one, so restarted with the rule the peer
+        #    stays on the parent; restarted with the rule and -reindex, the
+        #    parent's header is refused as the block files replay and the
+        #    peer ends on the child.
+        stop_node(plain, 1)
+        plain = self.nodes[1] = start_node(1, self.options.tmpdir,
+                                           ["-debug", "-blockversion=4", "-chainidrequiredheight=%d" % HEIGHT])
+        assert "Chain id rule: 0x5351 required from height %d" % HEIGHT in self.debug_log(1)
+        assert_equal(plain.getblockcount(), HEIGHT)
+        assert_equal(plain.getbestblockhash(), parent.hash)
+        stop_node(plain, 1)
+        plain = self.nodes[1] = start_node(1, self.options.tmpdir,
+                                           ["-debug", "-blockversion=4", "-chainidrequiredheight=%d" % HEIGHT, "-reindex"])
+        assert_equal(plain.getblockcount(), HEIGHT - 1)
+        assert_equal(plain.getbestblockhash(), child_hash)
+        assert ("AcceptBlockHeader: Consensus::ContextualCheckBlockHeader: %s, bad-chain-id" % parent.hash) in self.debug_log(1)
+
+        # 7. The regtest option is bounded to a block height: the largest value
         #    starts a node and is formatted on its startup line; a negative one
         #    refuses to start. That refusal is printed on the daemon's stderr
         #    before its log opens, so the daemon's stderr is captured to a file

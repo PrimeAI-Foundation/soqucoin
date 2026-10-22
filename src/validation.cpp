@@ -7249,6 +7249,38 @@ std::vector<unsigned char> GenerateCoinbaseCommitment(CBlock& block, const CBloc
     return commitment;
 }
 
+/**
+ * Chain id rule (Consensus::Params::nChainIdRequiredHeight; 0 = no rule).
+ * From the height every block that is not a legacy block must carry
+ * nAuxpowChainId in the high bits of its version, merge-mined or not:
+ * Dogecoin's form of the strict chain id check. CheckAuxPowProofOfWork
+ * already requires it of a block with an auxpow; this requires it of a direct
+ * proof-of-work block too, so that with the parent-side rule in CAuxPow::check
+ * (a parent must not carry our chain id) no merge-mining parent is a valid
+ * header of this chain from the height on. A function of the header and the
+ * parameters alone, so DoS 100 as for the other header rules of its kind.
+ * Height 0 is never at or above a height greater than 0, so genesis is exempt
+ * on every network.
+ *
+ * Two call sites, one predicate: ContextualCheckBlockHeader judges every
+ * header as it arrives, so a block that fails is never fetched; and
+ * ContextualCheckBlock judges the block's own header again when its data is
+ * accepted, because AcceptBlockHeader does not re-check a header already in
+ * the index, and a header indexed before the rule applied to it (a node that
+ * took headers, then restarted on a release that schedules the rule) would
+ * otherwise connect without it.
+ */
+static bool CheckChainIdRule(const CBlockHeader& block, CValidationState& state, int nHeight, const Consensus::Params& consensusParams)
+{
+    if (consensusParams.nChainIdRequiredHeight > 0 && nHeight >= consensusParams.nChainIdRequiredHeight &&
+        !block.IsLegacy() && block.GetChainId() != consensusParams.nAuxpowChainId)
+        return state.DoS(100, error("%s : block at height %d carries chain id 0x%x, 0x%x is required from height %d (nVersion 0x%08x)",
+            __func__, nHeight, block.GetChainId(), consensusParams.nAuxpowChainId,
+            consensusParams.nChainIdRequiredHeight, block.nVersion),
+            REJECT_INVALID, "bad-chain-id");
+    return true;
+}
+
 bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, const CBlockIndex* pindexPrev, int64_t nAdjustedTime)
 {
     const int nHeight = pindexPrev == NULL ? 0 : pindexPrev->nHeight + 1;
@@ -7269,24 +7301,10 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
             __func__, nHeight, consensusParams.nAuxpowStartHeight),
             REJECT_INVALID, "early-auxpow-block");
 
-    // Chain id rule (Consensus::Params::nChainIdRequiredHeight; 0 = no rule).
-    // From the height every block that is not a legacy block must carry
-    // nAuxpowChainId in the high bits of its version, merge-mined or not:
-    // Dogecoin's form of the strict chain id check. CheckAuxPowProofOfWork
-    // already requires it of a block with an auxpow; this requires it of a
-    // direct proof-of-work block too, so that with the parent-side rule in
-    // CAuxPow::check (a parent must not carry our chain id) no merge-mining
-    // parent is a valid header of this chain from the height on. A function
-    // of the header and the parameters alone, so DoS 100 as for its two
-    // neighbours above; and checked here, on the header, so a block that
-    // fails it is never fetched. Height 0 is never at or above a height
-    // greater than 0, so genesis is exempt on every network.
-    if (consensusParams.nChainIdRequiredHeight > 0 && nHeight >= consensusParams.nChainIdRequiredHeight &&
-        !block.IsLegacy() && block.GetChainId() != consensusParams.nAuxpowChainId)
-        return state.DoS(100, error("%s : block at height %d carries chain id 0x%x, 0x%x is required from height %d (nVersion 0x%08x)",
-            __func__, nHeight, block.GetChainId(), consensusParams.nAuxpowChainId,
-            consensusParams.nChainIdRequiredHeight, block.nVersion),
-            REJECT_INVALID, "bad-chain-id");
+    // Chain id rule, the header site (see CheckChainIdRule): after the two
+    // version-shape rules above, before any work on the block.
+    if (!CheckChainIdRule(block, state, nHeight, consensusParams))
+        return false;
 
     // Check proof of work
     if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
@@ -7359,6 +7377,12 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, const CB
     const int nHeight = pindexPrev == NULL ? 0 : pindexPrev->nHeight + 1;
     const CChainParams& chainParams = Params();
     const Consensus::Params& consensusParams = chainParams.GetConsensus(nHeight);
+
+    // Chain id rule, the block site (see CheckChainIdRule): the block's own
+    // header judged again, for a header that was indexed before the rule
+    // applied to it.
+    if (!CheckChainIdRule(block, state, nHeight, consensusParams))
+        return false;
 
     // Start enforcing BIP113 (Median Time Past) using versionbits logic.
     // Soqucoin: We probably want to disable this

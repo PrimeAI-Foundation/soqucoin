@@ -527,6 +527,39 @@ BOOST_AUTO_TEST_CASE(chainid_required_height)
     // Disarmed (0 = no rule) the same shape passes again at the same height.
     UpdateRegtestChainIdRequiredHeight(0);
     BOOST_CHECK_MESSAGE(judge(kDirectNoId), "version without the id refused with no rule: " + reason);
+
+    // A header indexed before the rule applied to it. AcceptBlockHeader does
+    // not re-check a header already in the index, so the block site of the
+    // rule (ContextualCheckBlock) must refuse the block when its data arrives
+    // after the rule arms: with no rule the header of a block without the id
+    // is indexed; armed, the block itself draws bad-chain-id with DoS 100,
+    // ProcessNewBlock refuses it, the index entry is marked failed and the
+    // chain does not move.
+    std::unique_ptr<CBlockTemplate> tmplCached = BlockAssembler(cp).CreateNewBlock(spk, true);
+    BOOST_REQUIRE(tmplCached != nullptr);
+    CBlock cached = tmplCached->block;
+    cached.nVersion = kDirectNoId;
+    cached.hashMerkleRoot = BlockMerkleRoot(cached);
+    while (!CheckProofOfWork(cached.GetPoWHash(), cached.nBits, cp.GetConsensus(kArm + 1))) {
+        ++cached.nNonce;
+    }
+    CValidationState headerState;
+    const CBlockIndex* pindexCached = nullptr;
+    BOOST_REQUIRE(ProcessNewBlockHeaders({cached.GetBlockHeader()}, headerState, cp, &pindexCached));
+    BOOST_REQUIRE(pindexCached != nullptr);
+    BOOST_CHECK_EQUAL(pindexCached->nHeight, kArm + 1);
+    BOOST_CHECK(!(pindexCached->nStatus & BLOCK_FAILED_MASK));
+    UpdateRegtestChainIdRequiredHeight(kArm);
+    CValidationState blockState;
+    nDoS = 0;
+    BOOST_CHECK(!ContextualCheckBlock(cached, blockState, chainActive.Tip()));
+    BOOST_CHECK_EQUAL(blockState.GetRejectReason(), "bad-chain-id");
+    BOOST_CHECK(blockState.IsInvalid(nDoS));
+    BOOST_CHECK_EQUAL(nDoS, 100);
+    std::shared_ptr<const CBlock> sharedCached = std::make_shared<const CBlock>(cached);
+    BOOST_CHECK(!ProcessNewBlock(cp, sharedCached, true, nullptr));
+    BOOST_CHECK_EQUAL(chainActive.Height(), kArm);
+    BOOST_CHECK(pindexCached->nStatus & BLOCK_FAILED_VALID);
 }
 
 // ============================================
