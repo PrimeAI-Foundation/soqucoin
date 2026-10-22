@@ -124,9 +124,8 @@ zmqpubrawtx=tcp://127.0.0.1:28334
 
 A node that starts with a tip more than 24 hours old (`maxtipage`, default
 86400) reports initial block download and refuses to serve work until it has
-caught up; the chain is small and a sync takes minutes. That state ends once
-the node has synced and does not return, so a node that later falls behind
-keeps serving work while it has peers: watch the tip's age and the block
+caught up; the chain is small and a sync takes minutes. Once synced, a node
+does not re-enter that state on its own, so watch the tip's age and the block
 height yourself (`getblockchaininfo`, or the ZMQ block notifications).
 
 ---
@@ -241,7 +240,7 @@ node sets it.
 | Signature Algorithm | ML-DSA-44 (NIST FIPS 204) |
 | AuxPoW | Enabled from block 0; chain ID 0x5351; strict chain ID on mainnet |
 | Coinbase Maturity | 288 blocks |
-| Reorganisation horizon | A node rejects a new header that builds on a fork 288 blocks deep or more (`bad-fork-beyond-finality`); the check runs when a header is first accepted and is skipped during initial block download, so headers accepted earlier are not re-checked |
+| Reorganisation horizon | A synced node rejects a header that builds on a fork 288 blocks deep or more; a node still syncing does not have that protection yet, which is why the chain check below compares two published hashes |
 | P2P Protocol Version | 70015 |
 
 ---
