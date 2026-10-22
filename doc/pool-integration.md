@@ -68,21 +68,34 @@ soqucoin-cli getnetworkhashps     # Network hash rate estimate
 soqucoin-cli getblockcount        # Current block height
 ```
 
-### Wallet Operations
+### Payouts
+
+Payouts are signed outside the node. The Go SDK
+([github.com/soqucoin-labs/soqucoin-sdk](https://github.com/soqucoin-labs/soqucoin-sdk))
+derives keys and addresses, builds and signs transactions in your own
+infrastructure, and uses the node only to read the chain and broadcast; its
+`docs/EXCHANGE_INTEGRATION.md` describes that path, including the sizes of
+ML-DSA-44 keys and signatures and the indexer the SDK reads unspent outputs
+from. The node's built-in wallet (present in the Linux and Windows builds) is
+not part of a pool integration: run the pool node with `disablewallet=1`, as
+every node we operate does. A wallet rescan holds the node's chain lock for as
+long as it runs, and every RPC, the mining RPCs included, waits on it.
+
+The pool's own keys are a keypair made with the SDK's `keys` package and
+saved in its encrypted keystore, backed up before its address is used; that
+key's `sq1p` address is the one given to `createauxblock`. `examples/pool_payout`
+is a batch payout tool: UTXO selection with a persistent spent set, a pre-check
+against the node, then build, sign and broadcast, with the inputs recorded as
+spent only after the node accepts the transaction, and a circuit breaker. It
+stops at broadcast acceptance, so confirmations are tracked separately before a
+miner's balance is settled, as the exchange guide's withdrawal engine
+(`UpdateConfirmations`) does. `examples/generate_address` prints an address
+without saving its key: a demonstration; mining to a printed address would leave
+the reward unspendable, since the key is gone when the program exits.
 
 ```bash
-soqucoin-cli getnewaddress "" bech32m    # Generate payout address
-soqucoin-cli getbalance                  # Check balance
-soqucoin-cli sendtoaddress <addr> <amt>  # Send payout
-soqucoin-cli validateaddress <addr>      # Validate miner address
+soqucoin-cli validateaddress <addr>      # Validate miner address (isdilithium)
 ```
-
-The node's wallet is one way to hold and pay SOQ. The other is the Go SDK
-([github.com/soqucoin-labs/soqucoin-sdk](https://github.com/soqucoin-labs/soqucoin-sdk)),
-which derives keys, builds and signs transactions in your own infrastructure
-and uses the node only to read the chain and broadcast; its
-`docs/EXCHANGE_INTEGRATION.md` describes that path, including the sizes of
-ML-DSA-44 keys and signatures.
 
 ---
 
@@ -103,8 +116,13 @@ rpcport=33389          # mainnet
 # node opts in.
 enablemining=1
 
-# Optional: index every transaction, so getrawtransaction answers for any txid.
-# Set it before the first start; adding it later needs -reindex-chainstate.
+# The node's wallet is not part of a pool integration; payouts are signed with
+# the SDK in your own infrastructure (see Payouts above).
+disablewallet=1
+
+# Required for the SDK payout path: the SDK confirms a payout by transaction
+# id (getrawtransaction), which needs the index once the payout's outputs are
+# spent. Set it before the first start; adding it later needs -reindex-chainstate.
 txindex=1
 
 # Allow pool server to connect
@@ -136,6 +154,11 @@ the ZMQ block notifications).
 | Mainnet | Bech32m (witness v1) | `sq1p` | `sq1pxyz...` |
 | Stagenet | Bech32m (witness v1) | `ssq1p` | `ssq1pxyz...` |
 | Testnet / Regtest | Bech32m (witness v1) | `sq1p` | shares the mainnet HRP; select the network by RPC port, not by address prefix |
+
+A miner gets an `sq1p` address from SoquShield (the self-custodial wallet, on
+Google Play and on TestFlight for iOS) or from the browser generator at
+[soqu.org/wallet](https://soqu.org/wallet/); the docs'
+[first-transaction page](https://soqu.org/docs/get-started/first-tx/) walks through it.
 
 **Important**: Do not pay Legacy Base58 addresses. They stand for pay-to-pubkey-hash and
 pay-to-script-hash outputs, which the script layer cannot spend. Mainnet and stagenet nodes refuse
@@ -271,10 +294,10 @@ differs, the node is on another chain and that guide says what to do.
 ### Verification Checklist
 
 1. ✅ Can connect to P2P network and sync blocks
-2. ✅ Can generate bech32m addresses via RPC
+2. ✅ Can derive bech32m payout addresses with the SDK
 3. ✅ Can create block templates via `getblocktemplate`
 4. ✅ Can validate miner addresses via `validateaddress`
-5. ✅ Can send payouts via `sendtoaddress`
+5. ✅ Can build, sign and broadcast a payout with the SDK (`sendrawtransaction`)
 6. ✅ Block notifications work (ZMQ or polling)
 7. ✅ AuxPoW blocks submit successfully (if supporting merged mining)
 
