@@ -82,11 +82,16 @@ every node we operate does. A wallet rescan holds the node's chain lock for as
 long as it runs, and every RPC, the mining RPCs included, waits on it.
 
 The pool's own keys are a keypair made with the SDK's `keys` package and
-kept in its encrypted keystore; that key's `sq1p` address is the one given to
-`createauxblock`. Two SDK examples cover the whole path: `examples/generate_address`
-(a keypair and its address) and `examples/pool_payout` (a batch payout tool:
-UTXO selection with a persistent spent set, a pre-check against the node, then
-build, sign, broadcast and confirm, with a circuit breaker).
+saved in its encrypted keystore, backed up before its address is used; that
+key's `sq1p` address is the one given to `createauxblock`. `examples/pool_payout`
+is a batch payout tool: UTXO selection with a persistent spent set, a pre-check
+against the node, then build, sign and broadcast, with the inputs recorded as
+spent only after the node accepts the transaction, and a circuit breaker. It
+stops at broadcast acceptance, so confirmations are tracked separately before a
+miner's balance is settled, as the exchange guide's withdrawal engine
+(`UpdateConfirmations`) does. `examples/generate_address` prints an address
+without saving its key: a demonstration; mining to a printed address would leave
+the reward unspendable, since the key is gone when the program exits.
 
 ```bash
 soqucoin-cli validateaddress <addr>      # Validate miner address (isdilithium)
