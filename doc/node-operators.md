@@ -1,12 +1,12 @@
 # Running a Soqucoin node
 
-Mainnet starts on **13 October 2026 at 15:00 UTC**. This page walks you through running your own node, from the download to checking that you're on the real chain. If you've never run a node before, start at the top and go in order.
+Mainnet has run since **13 October 2026**. This page walks you through running your own node, from the download to checking that you're on the real chain. If you've never run a node before, start at the top and go in order.
 
 You don't need a node to mine on SOQUPOOL or to hold SOQ in SoquShield. You run one to check the chain yourself instead of relying on anyone else's copy. We'd like a lot of you to do exactly that.
 
 ## Before anything else: stay safe
 
-Launches attract scammers. Most of what goes wrong for new operators in the first days is somebody offering "help".
+New chains attract scammers. Most of what goes wrong for new operators is somebody offering "help".
 
 - Download only from the [GitHub releases page](https://github.com/soqucoin/soqucoin/releases), and check the checksum (step 1 shows how).
 - Nobody on our team will DM you a download link, a config file or a list of peers. If someone does, it's a scam.
@@ -24,7 +24,7 @@ Our official channels are X [@soqucoin](https://x.com/soqucoin), Telegram [t.me/
 | macOS 15 (Sequoia) or newer, Apple silicon or Intel | The ready-made macOS build |
 | 64-bit Windows | The ready-made Windows build |
 
-The chain starts empty on 13 October, so it won't use much for a long time. Our own stagenet nodes run in about 120 MB of memory. A machine with 2 GB of RAM and 20 GB of free disk has plenty of room, and that includes a small cloud server.
+The chain started on 13 October 2026 and is still small, so it won't use much for a long time. Our own stagenet nodes run in about 120 MB of memory. A machine with 2 GB of RAM and 20 GB of free disk has plenty of room, and that includes a small cloud server.
 
 The current release is **2.5.3**: the 2.5.2 node with stricter validation of the messages it receives from other nodes. Every node operator should move to it. Mainnet needs 2.5.1 or newer: block 1 carries the genesis migration, and only those releases know the rule for it, so an older release rejects block 1 and stops there.
 
@@ -128,30 +128,29 @@ Two commands tell you everything:
 
 | When | Blocks | Connections | What it means |
 |---|---|---|---|
-| Before 13 Oct, 15:00 UTC | 0 | 0 | There's no mainnet chain yet. Your node is fine |
-| The first day after launch | 0 | 0 | Still fine. Public peering hasn't opened yet |
-| After the opening | climbing | more than 0 | Your node is catching up |
+| Just started | 0 | 0 | Give it a few minutes to find peers |
+| Syncing | climbing | more than 0 | Your node is catching up |
 | Caught up | about one new block a minute | more than 0 | Done. Now check the hashes (step 4) |
 
-Yes, a node showing 0 and 0 for a full day is normal. Our nodes accept no outside connections for at least the first day after block 1, and the opening doesn't happen before the chain is 576 blocks deep. By then our own nodes won't accept a rewrite of the chain 288 blocks deep or more. That protection only covers a node that's already synced, though. A node downloading the chain for the first time doesn't have it yet, which is why step 4 has you check two hashes. Leave your node running, or start it after the opening. Either way works.
+A node that still shows 0 and 0 after ten minutes isn't finding peers. Check that the machine is online and that you run release 2.5.1 or newer. A synced node won't accept a rewrite of the chain 288 blocks deep or more. That protection only covers a node that's already synced, though. A node downloading the chain for the first time doesn't have it yet, which is why step 4 has you check two hashes.
 
-Opening port 33388 on your router or firewall is optional. Your node syncs fine without it. Opening it lets other nodes connect to yours once peering is open.
+Opening port 33388 on your router or firewall is optional. Your node syncs fine without it. Opening it lets other nodes connect to yours.
 
 ## Step 4: Check you're on the real chain
 
-A node syncing for the first time has nothing of its own to compare against. So at the opening, we publish two block hashes: block 1, and the block at the opening height. Check yours against both:
+A node syncing for the first time has nothing of its own to compare against. So we publish two block hashes here: block 1, and block 1,502, the height at which the network opened to outside nodes on 14 October 2026. Check yours against both:
 
 ```bash
 ./soqucoin-cli getblockhash 1
-./soqucoin-cli getblockhash <opening height>
+./soqucoin-cli getblockhash 1502
 ```
 
 | Block | Hash |
 |---|---|
-| 1 | Not published yet |
-| Opening height | Not published yet |
+| 1 | `0f810805571d662db8146f869b3dc6b9fa9212a4cc3c3b11f18f03b856cffee1` |
+| 1,502 | `e8820618a5fe88a67681873ba3d3dcf5143d28e3aadb2bde04f60187ec21ec56` |
 
-We'll post them here, on X and in the Telegram channel at the same time. All three should agree. If they don't, trust none of them and ask in the Telegram channel.
+The block explorer at [explorer.soqu.org](https://explorer.soqu.org) shows the same two blocks; this page and the explorer should agree. If they don't, trust neither and ask in the Telegram channel.
 
 If either hash doesn't match, your node is on the wrong chain. Stop it, and don't send or accept anything with it. Syncing again from scratch won't fix it by itself, because the node can pick up the same wrong chain from the same peers. Check the release page and our official channels for recovery steps (usually a new release with a checkpoint for the right chain) and follow those.
 
@@ -199,7 +198,7 @@ You've put `rpcuser` or `rpcpassword` in `soqucoin.conf` and something doesn't l
 Run the `xattr` line from step 1. If macOS says the program needs a newer version, you need macOS 15 or later.
 
 **0 blocks and 0 connections**
-Normal before launch, and normal for at least the first day after it. See step 3.
+Normal for the first few minutes while the node finds peers. If it stays that way, see step 3.
 
 **`"chain": "stagenet"`**
 Remove `stagenet=1` from `soqucoin.conf` and restart.
@@ -216,7 +215,7 @@ A release after launch may add checkpoints so that a new node syncing from scrat
 
 ## Practicing on stagenet
 
-Stagenet is the live test network our own nodes run today. It's a good place to prove your setup before mainnet. Put this line in `soqucoin.conf` in the data folder:
+Stagenet is the live test network our own nodes run today. It's a good place to prove your setup before you run a mainnet node. Put this line in `soqucoin.conf` in the data folder:
 
 ```ini
 stagenet=1

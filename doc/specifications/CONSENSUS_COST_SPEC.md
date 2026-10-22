@@ -2,15 +2,15 @@
 
 > Status (2026-09-11): LatticeFold+ batch verification (`OP_CHECKFOLDPROOF`, witness v3) is deprecated and its deployment does not activate on any network; the ALWAYS_ACTIVE references to it below are historical. Its successor for confidential assets and succinct proofs is SoquObscura, in research and not scheduled on any network.
 
-> **Version**: 4.1 | **Status**: Pre-Mainnet
+> **Version**: 4.1 | **Status**: Historical record (prepared before launch; mainnet has run since 13 October 2026)
 > **Last Updated**: July 2, 2026
 > **Specification Tag**: Mainnet Candidate v1.0.0-rc4
-> **Prepared For**: Halborn Security Audit (Hossam Mohamed, Alexis Fabre)
+> **Prepared For**: the Halborn security audit
 
 ---
 
 > [!IMPORTANT]
-> **Pre-Mainnet Notice**: The following parameters are subject to change before mainnet launch:
+> **Notice**: this document was prepared for the audit before launch and is kept as the record. Of the parameters below:
 > - **Policy parameters** (fees, dust limits) may be adjusted based on market conditions
 > - **Benchmark-derived weights** (PQ verification costs) may be rebalanced based on hardware telemetry
 > - **Consensus parameters** are frozen and will not change without a coordinated network upgrade

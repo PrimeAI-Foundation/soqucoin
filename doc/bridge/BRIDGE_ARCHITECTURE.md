@@ -1,16 +1,15 @@
 # pSOQ ↔ SOQ Gateway Architecture
 
-> ⚠️ **Status (28 August 2026): a design in active development. No service is operating yet.**
-> The gateway described below remains the planned automated path between pSOQ and native
-> SOQ, and it stays open source. It is not live: no conversion, redemption, or exchange
-> service between pSOQ and SOQ operates or is offered today, and it will not operate
-> before third-party audit and review. Nothing in this document is a promise of
-> redemption, of backing, or of a timeline; the specific dates and backing tables below
-> predate the current review and will be revised.
+> ⚠️ **Status (22 October 2026): a design record. No service operates.**
+> The project operates no conversion, redemption or exchange service between pSOQ and
+> SOQ, and this document is not a promise of redemption, of backing or of a timeline. The
+> one-time migration of pSOQ into Soqucoin's block 1 closed on 5 October 2026 and does not
+> repeat; pSOQ is not a wrapped or redeemable form of SOQ. The dates and backing tables
+> below predate that migration and describe the design as it stood in mid-2026.
 
 > **Status:** Design record. Demonstrated on devnet and stagenet in 2026; not deployed.  
 > **Last Updated:** June 15, 2026  
-> **Audit Requirement:** Halborn Phase 2 Audit in progress  
+> **Audit Requirement:** a second external audit before any deployment  
 
 ---
 
