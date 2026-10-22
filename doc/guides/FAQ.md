@@ -67,11 +67,11 @@ Soqucoin uses the **Scrypt** proof-of-work algorithm with:
 
 ## Is there a mining pool?
 
-Yes. [SOQUPOOL](https://soqupool.com) is the only supported way to mine SOQ at
-mainnet launch. Support for other pools and for solo mining will be announced
-when it is ready.
+Yes. [SOQUPOOL](https://soqupool.com) merge-mines SOQ with LTC and DOGE, and
+other pools that merge-mine it pay out SOQ the same way. A pool operator
+adding SOQ starts at [pool-integration.md](../pool-integration.md).
 
-SOQUPOOL merge-mines SOQ with LTC and DOGE. AuxPoW is active from genesis.
+AuxPoW is active from genesis.
 
 ## Address Formats
 

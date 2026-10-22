@@ -5,9 +5,9 @@
 > **Consensus**: Scrypt PoW + AuxPoW Merged Mining
 
 > **Status**: Written for Testnet3 in January 2026 and kept as a record; parts of
-> it are out of date. SOQUPOOL is the only supported way to mine SOQ at mainnet
-> launch, with connection details at [soqupool.com](https://soqupool.com).
-> Support for other pools and for solo mining will be announced when it is ready.
+> it are out of date. SOQ is mined at SOQUPOOL ([soqupool.com](https://soqupool.com))
+> and at other pools that merge-mine it; the current guide for pool operators is
+> [pool-integration.md](../pool-integration.md).
 
 ---
 

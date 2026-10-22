@@ -197,7 +197,7 @@ Release archives for Linux, macOS and Windows are on the [releases page](https:/
 
 ### ⛏️ Mining
 
-SOQUPOOL is the only supported way to mine SOQ at mainnet launch. Support for other pools and for solo mining will be announced when it is ready. Connection details are at [soqupool.com](https://soqupool.com).
+SOQ is mined at SOQUPOOL ([soqupool.com](https://soqupool.com)) and at other pools that merge-mine it. A pool operator adding SOQ starts at [doc/pool-integration.md](doc/pool-integration.md).
 
 ### Network Ports
 
@@ -218,7 +218,7 @@ SOQUPOOL is the only supported way to mine SOQ at mainnet launch. Support for ot
 | [INSTALL.md](INSTALL.md) | Build instructions for all platforms |
 | [doc/stagenet-mining-guide.md](doc/stagenet-mining-guide.md) | Stagenet mining & node setup |
 | [doc/node-operators.md](doc/node-operators.md) | Running your own node, step by step: download and check the release, start it, what the first day looks like, and how to confirm you're on the real chain |
-| [contrib/solo-miner/README.md](contrib/solo-miner/README.md) | Solo mining stratum proxy for stagenet and development; not supported on mainnet at launch |
+| [contrib/solo-miner/README.md](contrib/solo-miner/README.md) | Solo mining stratum proxy for stagenet and development, built from source |
 | [doc/specifications/pat-specification.md](doc/specifications/pat-specification.md) | PAT wire format specification |
 | [Whitepaper](https://soqu.org/whitepaper/soqucoin_whitepaper.pdf) | Technical specification |
 | [Block explorer](https://explorer.soqu.org) | Mainnet blocks, transactions and addresses |

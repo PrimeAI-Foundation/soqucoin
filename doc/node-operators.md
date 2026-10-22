@@ -173,7 +173,7 @@ The build took under three minutes on 8 cores in our test. A smaller machine tak
 
 ## Mining
 
-SOQUPOOL is the only supported way to mine SOQ at mainnet launch. Support for other pools and for solo mining will be announced when it is ready.
+SOQ is mined at SOQUPOOL ([soqupool.com](https://soqupool.com)) and at other pools that merge-mine it. If you run a pool, [pool-integration.md](pool-integration.md) is where adding SOQ starts.
 
 Your node doesn't need mining turned on. On a regular node, `getblocktemplate` returns an error. That's on purpose.
 
