@@ -79,7 +79,7 @@ soqucoin-cli validateaddress <addr>      # Validate miner address
 ```
 
 The node's wallet is one way to hold and pay SOQ. The other is the Go SDK
-([github.com/soqucoin/soqucoin-sdk](https://github.com/soqucoin/soqucoin-sdk)),
+([github.com/soqucoin-labs/soqucoin-sdk](https://github.com/soqucoin-labs/soqucoin-sdk)),
 which derives keys, builds and signs transactions in your own infrastructure
 and uses the node only to read the chain and broadcast; its
 `docs/EXCHANGE_INTEGRATION.md` describes that path, including the sizes of
@@ -124,9 +124,9 @@ zmqpubrawtx=tcp://127.0.0.1:28334
 
 A node that starts with a tip more than 24 hours old (`maxtipage`, default
 86400) reports initial block download and refuses to serve work until it has
-caught up; the chain is small and a sync takes minutes. Once synced, a node
-does not re-enter that state on its own, so watch the tip's age and the block
-height yourself (`getblockchaininfo`, or the ZMQ block notifications).
+caught up; the chain is small and a sync takes minutes. After the first sync,
+watch the tip's age and the block height yourself (`getblockchaininfo`, or
+the ZMQ block notifications).
 
 ---
 
@@ -236,11 +236,11 @@ node sets it.
 | Block Time Target | 60 seconds |
 | Difficulty Adjustment | Every block from block 1 (DigiShield, 60-second timespan) |
 | Max Block Size | 1 MB base, 4,000,000 weight units |
-| Payment outputs | Witness v1 (bech32m `sq1p`), ML-DSA-44; other output forms are refused at relay on mainnet |
+| Payment outputs | Witness v1 (bech32m `sq1p`), ML-DSA-44, the payment output a mainnet node relays; OP_RETURN data outputs are relayed too, within the standard size limit |
 | Signature Algorithm | ML-DSA-44 (NIST FIPS 204) |
 | AuxPoW | Enabled from block 0; chain ID 0x5351; strict chain ID on mainnet |
 | Coinbase Maturity | 288 blocks |
-| Reorganisation horizon | A synced node rejects a header that builds on a fork 288 blocks deep or more; a node still syncing does not have that protection yet, which is why the chain check below compares two published hashes |
+| Reorganisation horizon | A synced node rejects a block that builds on a fork 288 blocks deep or more, with one exception: a competing chain whose headers it accepted while it was still syncing. A node downloading the chain for the first time does not have the protection yet, which is why the chain check below compares two published hashes |
 | P2P Protocol Version | 70015 |
 
 ---
