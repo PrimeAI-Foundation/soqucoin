@@ -1,9 +1,8 @@
 # Soqucoin Solo Miner
 
-> **Status**: SOQUPOOL is the only supported way to mine SOQ at mainnet launch.
-> Support for other pools and for solo mining will be announced when it is
-> ready. This proxy is kept for stagenet and development use and is built from
-> source; the release workflow does not publish it.
+> **Status**: This proxy is kept for stagenet and development use and is built
+> from source; the release workflow does not publish it. SOQ is mined at
+> SOQUPOOL and at other pools that merge-mine it; see `doc/pool-integration.md`.
 
 A lightweight stratum proxy that connects to your local `soqucoind` node and lets you mine blocks directly — **all rewards go to your address**.
 

@@ -6,10 +6,9 @@
 > **Signatures**: ML-DSA-44 (FIPS 204, "Dilithium"), transparent to pool operators  
 > **Last updated**: October 2026
 
-> **Status**: SOQUPOOL is the only supported way to mine SOQ at mainnet launch,
-> and integrations with other pools are not supported yet. Support for other
-> pools and for solo mining will be announced when it is ready. This guide is
-> kept as a technical reference.
+> **Status**: SOQ is mined at SOQUPOOL and at other pools that merge-mine it.
+> This guide is the integration reference for a pool that adds SOQ; questions
+> go to dev@soqu.org.
 
 ---
 
@@ -293,14 +292,14 @@ normal. SegWit witness discount (4:1) applies, so effective weight impact is
 A: The node runs with the mainnet default. Restart it with `enablemining=1`.
 
 **Q: Can I merge-mine SOQ with my existing LTC pool?**
-A: Integrations with other pools are not supported at mainnet launch (see the
-status note at the top). On the protocol side, SOQ uses the same AuxPoW format
-as Dogecoin, through `createauxblock` / `submitauxblock`.
+A: Yes. SOQ uses the same AuxPoW format as Dogecoin, through `createauxblock` /
+`submitauxblock`; the parameters are in this guide, and a synced mainnet node
+answers `createauxblock` so the setup can be checked before the first submission.
 
 ---
 
 ## Contact
 
-Support for pool integrations will be announced when it is ready. Bugs in the
-node's mining RPCs can be reported as
+Questions about a pool integration go to dev@soqu.org. Bugs in the node's
+mining RPCs can be reported as
 [GitHub issues](https://github.com/soqucoin/soqucoin/issues).
