@@ -213,4 +213,27 @@ BOOST_AUTO_TEST_CASE(ipv4_peer_with_ipv6_addrMe_test)
     BOOST_CHECK(1);
 }
 
+// GetDNSHost: a seed declared without service-bit filtering is queried by its
+// plain host name and its addresses are tagged NODE_NETWORK; one declared with
+// it is queried through the x<bits>. name when more than NODE_NETWORK is
+// wanted, and by the plain name when NODE_NETWORK alone is.
+BOOST_AUTO_TEST_CASE(dns_seed_host_name)
+{
+    const CDNSSeedData filtering("example.org", "seed.example.org", true);
+    const CDNSSeedData plain("example.org", "seed.example.org", false);
+    const ServiceFlags networkAndWitness = ServiceFlags(NODE_NETWORK | NODE_WITNESS);
+
+    ServiceFlags bits = networkAndWitness;
+    BOOST_CHECK_EQUAL(GetDNSHost(filtering, &bits), "x9.seed.example.org");
+    BOOST_CHECK_EQUAL(unsigned(bits), unsigned(networkAndWitness));
+
+    bits = NODE_NETWORK;
+    BOOST_CHECK_EQUAL(GetDNSHost(filtering, &bits), "seed.example.org");
+    BOOST_CHECK_EQUAL(unsigned(bits), unsigned(NODE_NETWORK));
+
+    bits = networkAndWitness;
+    BOOST_CHECK_EQUAL(GetDNSHost(plain, &bits), "seed.example.org");
+    BOOST_CHECK_EQUAL(unsigned(bits), unsigned(NODE_NETWORK));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

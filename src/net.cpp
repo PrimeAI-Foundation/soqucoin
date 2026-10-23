@@ -1161,7 +1161,9 @@ void CConnman::DeleteDisconnectedNodes()
 void CConnman::ThreadSocketHandler()
 {
     unsigned int nPrevNodeCount = 0;
-    const unsigned int nUnevictableConnections = std::max(0, std::max(MAX_OUTBOUND_CONNECTIONS, MAX_ADDNODE_CONNECTIONS) + PROTECTED_INBOUND_PEERS);
+    // The outbound slots plus the eviction-protected inbound peers. Manually
+    // added peers are counted neither here nor against the cap below.
+    const unsigned int nUnevictableConnections = std::max(0, MAX_OUTBOUND_CONNECTIONS + PROTECTED_INBOUND_PEERS);
 
     while (!interruptNet)
     {
@@ -1415,8 +1417,17 @@ void CConnman::ThreadSocketHandler()
         // Reduce number of connections, if needed
         //
 
+        // Manually added peers (-addnode, the addnode RPC) have their own limit,
+        // MAX_ADDNODE_CONNECTIONS, outside -maxconnections: the inbound budget in
+        // AcceptConnection and the descriptor reservation at start-up leave them
+        // out, so the count held against the cap leaves them out as well.
+        long unsigned int nAddnodeCopy = 0;
+        BOOST_FOREACH(CNode* pnode, vNodesCopy) {
+            if (pnode->fAddnode)
+                nAddnodeCopy++;
+        }
         long unsigned int nKeepConnections = nUnevictableConnections + nWhitelistedConnections;
-        long unsigned int nNodesCopy       = vNodesCopy.size();
+        long unsigned int nNodesCopy       = vNodesCopy.size() - nAddnodeCopy;
 
         if (nNodesCopy > nKeepConnections && (nNodesCopy > (long unsigned int)nMaxConnections))
         {
@@ -1439,7 +1450,9 @@ void CConnman::ThreadSocketHandler()
 
 void CConnman::SetMaxConnections(int newMaxConnections)
 {
-    newMaxConnections = std::max(newMaxConnections, MAX_ADDNODE_CONNECTIONS + PROTECTED_INBOUND_PEERS);
+    // The floor keeps the outbound slots and the eviction-protected inbound
+    // peers inside the cap; manually added peers sit outside it.
+    newMaxConnections = std::max(newMaxConnections, MAX_OUTBOUND_CONNECTIONS + PROTECTED_INBOUND_PEERS);
     nMaxConnections = std::min(newMaxConnections, nAvailableFds);
 
     if (nMaxConnections != newMaxConnections) {
@@ -1592,7 +1605,7 @@ void MapPort(bool)
 
 
 
-static std::string GetDNSHost(const CDNSSeedData& data, ServiceFlags* requiredServiceBits)
+std::string GetDNSHost(const CDNSSeedData& data, ServiceFlags* requiredServiceBits)
 {
     //use default host for non-filter-capable seeds or if we use the default service bits (NODE_NETWORK)
     //note: witness-pruned (NODE_NETWORK_LIMITED) nodes never match this filter,
@@ -1645,7 +1658,17 @@ void CConnman::ThreadDNSAddressSeed()
             std::vector<CNetAddr> vIPs;
             std::vector<CAddress> vAdd;
             ServiceFlags requiredServiceBits = nRelevantServices;
-            if (LookupHost(GetDNSHost(seed, &requiredServiceBits), vIPs, 0, true))
+            const std::string strHost = GetDNSHost(seed, &requiredServiceBits);
+            bool fFound = LookupHost(strHost, vIPs, 0, true);
+            if (!fFound && strHost != seed.host) {
+                // The service-bit form of the name has no record. The plain name is
+                // queried instead and its results are tagged NODE_NETWORK, as for a
+                // seed declared without service-bit filtering.
+                LogPrint("net", "DNS seed %s: no record for %s, querying %s\n", seed.name, strHost, seed.host);
+                requiredServiceBits = NODE_NETWORK;
+                fFound = LookupHost(seed.host, vIPs, 0, true);
+            }
+            if (fFound)
             {
                 BOOST_FOREACH(const CNetAddr& ip, vIPs)
                 {
@@ -1759,15 +1782,33 @@ void CConnman::ThreadOpenConnections()
         if (interruptNet)
             return;
 
-        // Add seed nodes if DNS seeds are all down (an infrastructure attack?).
-        if (addrman.size() == 0 && (GetTime() - nStart > 60)) {
-            static bool done = false;
-            if (!done) {
-                LogPrintf("Adding fixed seed nodes as DNS doesn't seem to be available.\n");
+        // Add the fixed seed nodes once if, 60 seconds after start, addrman is
+        // still empty or no outbound connection has completed: DNS seeding has
+        // then yielded nothing usable, or the addresses the node holds do not
+        // answer. Inbound peers do not count; they say nothing about whether
+        // the node can reach the network from what it knows. The check runs on
+        // every pass until it fires, so a node that later loses every outbound
+        // peer adds them then; the addresses are already public and harmless.
+        static bool fFixedSeedsAdded = false;
+        if (!fFixedSeedsAdded && (GetTime() - nStart > 60)) {
+            const size_t nAddrmanSize = addrman.size();
+            bool fOutboundConnected = false;
+            {
+                LOCK(cs_vNodes);
+                BOOST_FOREACH(CNode* pnode, vNodes) {
+                    if (!pnode->fInbound && pnode->fSuccessfullyConnected) {
+                        fOutboundConnected = true;
+                        break;
+                    }
+                }
+            }
+            if (nAddrmanSize == 0 || !fOutboundConnected) {
+                LogPrintf("Adding fixed seed nodes: %s 60 seconds after start (addrman holds %u addresses)\n",
+                          nAddrmanSize == 0 ? "addrman is empty" : "no outbound connection has completed", nAddrmanSize);
                 CNetAddr local;
                 LookupHost("127.0.0.1", local, false);
                 addrman.Add(convertSeed6(Params().FixedSeeds()), local);
-                done = true;
+                fFixedSeedsAdded = true;
             }
         }
 
@@ -2336,6 +2377,14 @@ bool CConnman::Start(CScheduler& scheduler, std::string& strNodeError, Options c
     if (semAddnode == NULL) {
         // initialize semaphore
         semAddnode = new CSemaphore(nMaxAddnode);
+    }
+
+    if (fListen) {
+        // The room -maxconnections leaves for inbound peers, so an operator can
+        // read it without working the arithmetic.
+        const int nInboundRoom = std::max(nMaxConnections - (nMaxOutbound + nMaxFeeler), 0);
+        LogPrintf("Accepting up to %d inbound connections (%d of them protected from eviction) beside %d outbound; manually added peers are limited separately to %d\n",
+                  nInboundRoom, std::min(nInboundRoom, PROTECTED_INBOUND_PEERS), nMaxOutbound, nMaxAddnode);
     }
 
     //

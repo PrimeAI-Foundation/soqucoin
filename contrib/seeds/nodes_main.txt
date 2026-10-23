@@ -1,9 +1,11 @@
-# Soqucoin mainnet seed nodes — SOQUPOOL geo-distributed mining mesh (Hetzner Cloud).
+# Soqucoin mainnet seed nodes: the SOQUPOOL mining mesh (Hetzner Cloud) and
+# two Soqucoin Labs nodes (DigitalOcean).
 # These match the fixed seeds compiled into src/chainparamsseeds.h.
 # Regenerate that header with:
 #   python3 contrib/seeds/generate-seeds.py contrib/seeds > src/chainparamsseeds.h
-# NOTE: this file previously held inherited Bitcoin mainnet nodes on :8333 (never
-# compiled in — only input to the generator); replaced with the real Soqucoin mesh.
+# This file is input to the generator only; nothing reads it at build time.
 5.78.192.237:33388
 116.203.230.200:33388
 5.223.50.163:33388
+143.110.229.69:33388
+209.38.135.167:33388

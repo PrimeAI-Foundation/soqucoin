@@ -10,6 +10,7 @@
 
 #include "chainparams.h"
 #include "consensus/consensus.h"
+#include "netaddress.h"
 #include "soqucoin.h"
 #include "primitives/block.h"
 #include "uint256.h"
@@ -19,7 +20,9 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <cstring>
 #include <map>
+#include <set>
 #include <string>
 
 BOOST_FIXTURE_TEST_SUITE(genesis_chainparams_tests, BasicTestingSetup)
@@ -873,6 +876,40 @@ BOOST_AUTO_TEST_CASE(chain_id_rule_height_per_network)
             BOOST_CHECK_EQUAL(Params().GetConsensus(h).nChainIdRequiredHeight, 0);
         }
     }
+    SelectParams(CBaseChainParams::REGTEST); // what BasicTestingSetup selected
+}
+
+// The mainnet seeds. Every DNS seed is declared with service-bit filtering, so
+// the x9. name is queried and the plain name when it has no record
+// (chainparams.cpp, the mainnet vSeeds lines; CConnman::ThreadDNSAddressSeed).
+// The fixed-seed table (chainparamsseeds.h, pnSeed6_main) carries five
+// distinct routable IPv4 nodes on the mainnet port, two of them outside the
+// pool hosts.
+BOOST_AUTO_TEST_CASE(mainnet_seeds_filtered_and_fixed_seeds_routable)
+{
+    SelectParams(CBaseChainParams::MAIN);
+    const std::vector<CDNSSeedData>& seeds = Params().DNSSeeds();
+    BOOST_CHECK_EQUAL(seeds.size(), 4U);
+    for (const CDNSSeedData& seed : seeds) {
+        BOOST_CHECK_MESSAGE(seed.supportsServiceBitsFiltering,
+            seed.host + " is declared without service-bit filtering");
+    }
+
+    const std::vector<SeedSpec6>& fixed = Params().FixedSeeds();
+    BOOST_CHECK_EQUAL(fixed.size(), 5U);
+    std::set<std::string> hosts;
+    for (const SeedSpec6& seed : fixed) {
+        struct in6_addr ip;
+        memcpy(&ip, seed.addr, sizeof(ip));
+        const CService service(CNetAddr(ip), seed.port);
+        BOOST_CHECK_MESSAGE(service.IsIPv4() && service.IsRoutable(),
+            service.ToString() + " is not a routable IPv4 address");
+        BOOST_CHECK_EQUAL(int(seed.port), Params().GetDefaultPort());
+        hosts.insert(service.ToStringIP());
+    }
+    BOOST_CHECK_EQUAL(hosts.size(), fixed.size());
+    BOOST_CHECK(hosts.count("143.110.229.69"));
+    BOOST_CHECK(hosts.count("209.38.135.167"));
     SelectParams(CBaseChainParams::REGTEST); // what BasicTestingSetup selected
 }
 

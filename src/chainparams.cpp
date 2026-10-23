@@ -645,11 +645,16 @@ public:
         digishieldConsensus.latticeBPSeed = consensus.latticeBPSeed;
         auxpowConsensus.latticeBPSeed = consensus.latticeBPSeed;
 
-        // Soqucoin mainnet DNS seeds — DNS-only (grey cloud) A records in Cloudflare
-        // These resolve to SOQUPOOL geo-distributed mining mesh nodes
+        // Soqucoin mainnet DNS seeds: DNS-only (grey cloud) A records in Cloudflare,
+        // each with an x9. record beside the plain name. Declared with service-bit
+        // filtering, so the x9. name is queried and its results carry the services
+        // the node wants; when that name has no record, ThreadDNSAddressSeed queries
+        // the plain name. seed1 to seed3 are the SOQUPOOL mining mesh nodes, seed4 a
+        // Soqucoin Labs node.
         vSeeds.push_back(CDNSSeedData("soqu.org", "seed1.soqu.org", true));
         vSeeds.push_back(CDNSSeedData("soqu.org", "seed2.soqu.org", true));
         vSeeds.push_back(CDNSSeedData("soqu.org", "seed3.soqu.org", true));
+        vSeeds.push_back(CDNSSeedData("soqu.org", "seed4.soqu.org", true));
 
         base58Prefixes[PUBKEY_ADDRESS] = boost::assign::list_of(63)(22).convert_to_container<std::vector<unsigned char> >(); // C5 prefix for mainnet
         base58Prefixes[SCRIPT_ADDRESS] = boost::assign::list_of(9)(18).convert_to_container<std::vector<unsigned char> >();  // 95 prefix
