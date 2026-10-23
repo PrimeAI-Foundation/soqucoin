@@ -1161,7 +1161,9 @@ void CConnman::DeleteDisconnectedNodes()
 void CConnman::ThreadSocketHandler()
 {
     unsigned int nPrevNodeCount = 0;
-    const unsigned int nUnevictableConnections = std::max(0, std::max(MAX_OUTBOUND_CONNECTIONS, MAX_ADDNODE_CONNECTIONS) + PROTECTED_INBOUND_PEERS);
+    // The outbound slots plus the eviction-protected inbound peers. Manually
+    // added peers are counted neither here nor against the cap below.
+    const unsigned int nUnevictableConnections = std::max(0, MAX_OUTBOUND_CONNECTIONS + PROTECTED_INBOUND_PEERS);
 
     while (!interruptNet)
     {
@@ -1415,8 +1417,17 @@ void CConnman::ThreadSocketHandler()
         // Reduce number of connections, if needed
         //
 
+        // Manually added peers (-addnode, the addnode RPC) have their own limit,
+        // MAX_ADDNODE_CONNECTIONS, outside -maxconnections: the inbound budget in
+        // AcceptConnection and the descriptor reservation at start-up leave them
+        // out, so the count held against the cap leaves them out as well.
+        long unsigned int nAddnodeCopy = 0;
+        BOOST_FOREACH(CNode* pnode, vNodesCopy) {
+            if (pnode->fAddnode)
+                nAddnodeCopy++;
+        }
         long unsigned int nKeepConnections = nUnevictableConnections + nWhitelistedConnections;
-        long unsigned int nNodesCopy       = vNodesCopy.size();
+        long unsigned int nNodesCopy       = vNodesCopy.size() - nAddnodeCopy;
 
         if (nNodesCopy > nKeepConnections && (nNodesCopy > (long unsigned int)nMaxConnections))
         {
@@ -1439,7 +1450,9 @@ void CConnman::ThreadSocketHandler()
 
 void CConnman::SetMaxConnections(int newMaxConnections)
 {
-    newMaxConnections = std::max(newMaxConnections, MAX_ADDNODE_CONNECTIONS + PROTECTED_INBOUND_PEERS);
+    // The floor keeps the outbound slots and the eviction-protected inbound
+    // peers inside the cap; manually added peers sit outside it.
+    newMaxConnections = std::max(newMaxConnections, MAX_OUTBOUND_CONNECTIONS + PROTECTED_INBOUND_PEERS);
     nMaxConnections = std::min(newMaxConnections, nAvailableFds);
 
     if (nMaxConnections != newMaxConnections) {
@@ -2364,6 +2377,14 @@ bool CConnman::Start(CScheduler& scheduler, std::string& strNodeError, Options c
     if (semAddnode == NULL) {
         // initialize semaphore
         semAddnode = new CSemaphore(nMaxAddnode);
+    }
+
+    if (fListen) {
+        // The room -maxconnections leaves for inbound peers, so an operator can
+        // read it without working the arithmetic.
+        const int nInboundRoom = std::max(nMaxConnections - (nMaxOutbound + nMaxFeeler), 0);
+        LogPrintf("Accepting up to %d inbound connections (%d of them protected from eviction) beside %d outbound; manually added peers are limited separately to %d\n",
+                  nInboundRoom, std::min(nInboundRoom, PROTECTED_INBOUND_PEERS), nMaxOutbound, nMaxAddnode);
     }
 
     //

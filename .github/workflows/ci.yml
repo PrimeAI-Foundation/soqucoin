@@ -99,7 +99,7 @@ jobs:
             witness-prune-serving.py witness-prune-ibd.py \
             wallet-encryption.py pq-address-rpcs.py pq-wallet-key-handling.py \
             block1-time-gate.py chainid-required-height.py \
-            fixed-seed-fallback.py
+            fixed-seed-fallback.py maxconnections-addnode.py
 
   # ============================================
   # Linux ARM64 (cross-compile)
