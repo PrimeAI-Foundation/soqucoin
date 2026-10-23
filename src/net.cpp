@@ -1769,15 +1769,33 @@ void CConnman::ThreadOpenConnections()
         if (interruptNet)
             return;
 
-        // Add seed nodes if DNS seeds are all down (an infrastructure attack?).
-        if (addrman.size() == 0 && (GetTime() - nStart > 60)) {
-            static bool done = false;
-            if (!done) {
-                LogPrintf("Adding fixed seed nodes as DNS doesn't seem to be available.\n");
+        // Add the fixed seed nodes once if, 60 seconds after start, addrman is
+        // still empty or no outbound connection has completed: DNS seeding has
+        // then yielded nothing usable, or the addresses the node holds do not
+        // answer. Inbound peers do not count; they say nothing about whether
+        // the node can reach the network from what it knows. The check runs on
+        // every pass until it fires, so a node that later loses every outbound
+        // peer adds them then; the addresses are already public and harmless.
+        static bool fFixedSeedsAdded = false;
+        if (!fFixedSeedsAdded && (GetTime() - nStart > 60)) {
+            const size_t nAddrmanSize = addrman.size();
+            bool fOutboundConnected = false;
+            {
+                LOCK(cs_vNodes);
+                BOOST_FOREACH(CNode* pnode, vNodes) {
+                    if (!pnode->fInbound && pnode->fSuccessfullyConnected) {
+                        fOutboundConnected = true;
+                        break;
+                    }
+                }
+            }
+            if (nAddrmanSize == 0 || !fOutboundConnected) {
+                LogPrintf("Adding fixed seed nodes: %s 60 seconds after start (addrman holds %u addresses)\n",
+                          nAddrmanSize == 0 ? "addrman is empty" : "no outbound connection has completed", nAddrmanSize);
                 CNetAddr local;
                 LookupHost("127.0.0.1", local, false);
                 addrman.Add(convertSeed6(Params().FixedSeeds()), local);
-                done = true;
+                fFixedSeedsAdded = true;
             }
         }
 
