@@ -1592,7 +1592,7 @@ void MapPort(bool)
 
 
 
-static std::string GetDNSHost(const CDNSSeedData& data, ServiceFlags* requiredServiceBits)
+std::string GetDNSHost(const CDNSSeedData& data, ServiceFlags* requiredServiceBits)
 {
     //use default host for non-filter-capable seeds or if we use the default service bits (NODE_NETWORK)
     //note: witness-pruned (NODE_NETWORK_LIMITED) nodes never match this filter,
@@ -1645,7 +1645,17 @@ void CConnman::ThreadDNSAddressSeed()
             std::vector<CNetAddr> vIPs;
             std::vector<CAddress> vAdd;
             ServiceFlags requiredServiceBits = nRelevantServices;
-            if (LookupHost(GetDNSHost(seed, &requiredServiceBits), vIPs, 0, true))
+            const std::string strHost = GetDNSHost(seed, &requiredServiceBits);
+            bool fFound = LookupHost(strHost, vIPs, 0, true);
+            if (!fFound && strHost != seed.host) {
+                // The service-bit form of the name has no record. The plain name is
+                // queried instead and its results are tagged NODE_NETWORK, as for a
+                // seed declared without service-bit filtering.
+                LogPrint("net", "DNS seed %s: no record for %s, querying %s\n", seed.name, strHost, seed.host);
+                requiredServiceBits = NODE_NETWORK;
+                fFound = LookupHost(seed.host, vIPs, 0, true);
+            }
+            if (fFound)
             {
                 BOOST_FOREACH(const CNetAddr& ip, vIPs)
                 {

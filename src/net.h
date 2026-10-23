@@ -474,6 +474,13 @@ bool IsReachable(enum Network net);
 bool IsReachable(const CNetAddr &addr);
 CAddress GetLocalAddress(const CNetAddr *paddrPeer, ServiceFlags nLocalServices);
 
+struct CDNSSeedData;
+/** The name to query for a DNS seed. A seed declared without service-bit
+ *  filtering, or a query for NODE_NETWORK alone, uses the plain host and the
+ *  required bits are reduced to NODE_NETWORK; otherwise the x<bits>. form of
+ *  the host is queried and the bits stand. */
+std::string GetDNSHost(const CDNSSeedData& data, ServiceFlags* requiredServiceBits);
+
 
 extern bool fDiscover;
 extern bool fListen;
