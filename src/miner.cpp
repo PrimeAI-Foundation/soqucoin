@@ -162,6 +162,11 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     // reject cross-chain / self-merge-mining reuse (bead lw7).
     const int32_t nVersion = VERSIONBITS_LAST_OLD_BLOCK_VERSION;
     pblock->SetBaseVersion(nVersion, nChainId);
+    // The release mark (bit 15), set on every network so the blocks built by
+    // nodes of this release and later can be counted on the chain. No check
+    // reads it (CPureBlockHeader); the regtest override below replaces the
+    // whole version, mark included.
+    pblock->nVersion |= CPureBlockHeader::VERSION_RELEASE_MARK;
     // -regtest only: allow overriding block.nVersion with
     // -blockversion=N to test forking scenarios
     if (chainparams.MineBlocksOnDemand())
