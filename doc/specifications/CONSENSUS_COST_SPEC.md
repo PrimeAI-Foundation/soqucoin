@@ -293,7 +293,7 @@ The limit of 10 ensures block validation completes well within target block time
 | **MAX_BLOCK_WEIGHT** | 4,000,000 | Bitcoin/Dogecoin | Consensus enforced |
 | **MAX_BLOCK_BASE_SIZE** | 1,000,000 | Bitcoin/Dogecoin | Excludes witness |
 | **MAX_BLOCK_SERIALIZED_SIZE** | 4,000,000 | Bitcoin/Dogecoin | Buffer limit |
-| **DEFAULT_BLOCK_MAX_SIZE** | 750,000 | Dogecoin | Miner policy |
+| **DEFAULT_BLOCK_MAX_SIZE** | 3,000,000 | Soqucoin | Miner policy; equal to DEFAULT_BLOCK_MAX_WEIGHT, so the weight limit binds first |
 | **DEFAULT_BLOCK_MAX_WEIGHT** | 3,000,000 | Dogecoin | Miner policy |
 
 ### Signature/Verification Limits
@@ -488,7 +488,7 @@ Nodes can adjust, miners can override:
 
 | Category | Default | Flag | Source |
 |----------|---------|------|--------|
-| **Block Size** | 750 KB | `-blockmaxsize` | Inherited |
+| **Block Size** | 3 MB | `-blockmaxsize` | Modified |
 | **Block Weight** | 3 MB | `-blockmaxweight` | Inherited |
 | **Mempool Size** | 300 MB | `-maxmempool` | Inherited |
 | **Min Relay Fee** | 0.001 SOQ/kB | `-minrelaytxfee` | Modified |
