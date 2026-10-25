@@ -25,10 +25,10 @@ public:
     /** Bits above are reserved for the auxpow chain ID.  */
     static const int32_t VERSION_CHAIN_START = (1 << 16);
 
-    /** Set by the block template of release 2.6.0 and later, so the blocks
-     *  built by nodes of those releases can be counted on the chain. Below
-     *  the chain id, above the base version and the auxpow flag; read by no
-     *  check and signalled on by no deployment.  */
+    /** Set by the block template (miner.cpp) so the blocks built by nodes
+     *  carrying this change can be counted on the chain. Below the chain
+     *  id, above the base version and the auxpow flag; read by no check and
+     *  signalled on by no deployment.  */
     static const int32_t VERSION_RELEASE_MARK = (1 << 15);
 
     // header

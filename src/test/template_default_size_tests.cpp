@@ -53,7 +53,7 @@ BOOST_AUTO_TEST_CASE(the_largest_standard_witness_transaction_enters_the_default
     CMutableTransaction tx;
     tx.nVersion = 2;
     for (int i = 0; i < kInputs; ++i) {
-        // Tags from 1: a zero txid would give the first input a coinbase shape.
+        // Tags from 1 give each seeded coin its own txid, none of them the null hash.
         tx.vin.push_back(CTxIn(SeedCoin(coinbaseSpk, kInputValue, (uint8_t)(i + 1))));
     }
     tx.vout.push_back(CTxOut(kInputs * kInputValue - kFee, coinbaseSpk));

@@ -432,7 +432,7 @@ BOOST_AUTO_TEST_CASE(chainid_required_height)
 
     // The version layout (CPureBlockHeader): the base version in the low
     // byte, the auxpow flag at bit 8, the chain id from bit 16.
-    const int32_t kDirect = 0x53510004;            // what the miner stamps: base 4, chain id 0x5351
+    const int32_t kDirect = 0x53510004;            // base 4, chain id 0x5351; the miner adds the release mark, judged in block_version_mark_tests
     const int32_t kDirectNoId = 0x00000004;        // base 4, chain id 0: the -blockversion=4 shape
     const int32_t kDirectOtherId = 0x00620004;     // base 4, chain id 0x62
     const int32_t kSignBit = (int32_t)0x80000004;  // base 4 with the sign bit: GetChainId is negative
