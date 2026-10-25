@@ -22,8 +22,10 @@ class CCoinsViewCache;
   */
 static const CAmount RECOMMENDED_MIN_TX_FEE = COIN / 100;
 
-/** Default for -blockmaxsize, which controls the maximum size of block the mining code will create **/
-static const unsigned int DEFAULT_BLOCK_MAX_SIZE = 750000;
+/** Default for -blockmaxsize, which controls the maximum size of block the mining code will create.
+ *  Equal to DEFAULT_BLOCK_MAX_WEIGHT: a transaction's weight is never below its size, so the weight
+ *  limit binds first and a default template admits every standard transaction (MAX_STANDARD_TX_WEIGHT). **/
+static const unsigned int DEFAULT_BLOCK_MAX_SIZE = 3000000;
 /** Default for -blockprioritysize, maximum space for zero/low-fee transactions **/
 static const unsigned int DEFAULT_BLOCK_PRIORITY_SIZE = 27000;
 /** Default for -blockmaxweight, which controls the range of block weights the mining code will create **/

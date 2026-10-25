@@ -97,6 +97,7 @@ BITCOIN_TESTS =\
   test/base58_tests.cpp \
   test/base64_tests.cpp \
   test/bip32_tests.cpp \
+  test/block_version_mark_tests.cpp \
   test/blockencodings_tests.cpp \
   test/bloom_tests.cpp \
   test/bswap_tests.cpp \
@@ -148,6 +149,7 @@ BITCOIN_TESTS =\
   test/test_bitcoin.h \
   test/testutil.cpp \
   test/testutil.h \
+  test/template_default_size_tests.cpp \
   test/timedata_tests.cpp \
   test/txrequest_tests.cpp \
   test/uint256_tests.cpp \

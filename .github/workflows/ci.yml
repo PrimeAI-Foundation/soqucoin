@@ -98,7 +98,7 @@ jobs:
             auxpow.py latticefold_basic.py pat_basic.py unspendable-outputs.py \
             witness-prune-serving.py witness-prune-ibd.py \
             wallet-encryption.py pq-address-rpcs.py pq-wallet-key-handling.py \
-            block1-time-gate.py chainid-required-height.py \
+            block1-time-gate.py chainid-required-height.py block-version-mark.py \
             fixed-seed-fallback.py maxconnections-addnode.py
 
   # ============================================

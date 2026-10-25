@@ -35,8 +35,9 @@ from test_framework.blocktools import create_block, create_coinbase, serialize_s
 # below is in the AuxPoW era.
 HEIGHT = 30
 CHAIN_ID = 0x5351
-# What the miner stamps on a direct block: base version 4, chain id 0x5351.
-STAMPED_VERSION = (CHAIN_ID << 16) | 4
+# What the miner stamps on a direct block: base version 4, chain id 0x5351,
+# the release mark at bit 15 (CPureBlockHeader::VERSION_RELEASE_MARK).
+STAMPED_VERSION = (CHAIN_ID << 16) | (1 << 15) | 4
 # The merge-mining tag that precedes the child's hash in the parent's coinbase.
 MERGED_MINING_HEADER = b"\xfa\xbe" + b"mm"
 
