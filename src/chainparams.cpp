@@ -417,8 +417,8 @@ public:
         // mainnet block 19,513, the assumed-valid block below, read from a live
         // mainnet node on 2026-10-25. This field is an IBD heuristic, and
         // IsInitialBlockDownload() gates the work-serving RPCs (getblocktemplate
-        // exempts only stagenet/regtest; AuxMiningCheck exempts nothing), so an
-        // unreachable value here means no node can serve mining work. The chain
+        // exempts only stagenet/regtest; AuxMiningCheck only regtest), so an
+        // unreachable value here means no mainnet node can serve mining work. The chain
         // shipped 0x00 at launch for that reason: the inherited upstream pin had
         // latched every fresh node in IBD (found 2026-08-29). Re-pin from a live
         // node with each release (doc/release-process.md); the value must be the

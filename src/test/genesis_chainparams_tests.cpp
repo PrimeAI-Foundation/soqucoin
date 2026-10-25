@@ -193,8 +193,8 @@ BOOST_AUTO_TEST_CASE(bip34_height_safety_testnet3)
 
 // nMinimumChainWork is an IBD heuristic, and IsInitialBlockDownload() gates
 // the work-serving RPCs (getblocktemplate exempts only stagenet/regtest;
-// AuxMiningCheck exempts nothing). An unreachable value latches every fresh
-// node in IBD and no node can serve mining work. Mainnet shipped 0x00 at
+// AuxMiningCheck only regtest). An unreachable value latches every fresh
+// mainnet node in IBD and no node can serve mining work. Mainnet shipped 0x00 at
 // launch for that reason (the inherited upstream pin had done exactly that
 // until it was driven on 2026-08-29); the first release after block 1 pins
 // the work of a block every synced node holds, read from a live mainnet node
@@ -231,7 +231,9 @@ BOOST_AUTO_TEST_CASE(ibd_thresholds_are_zero_off_mainnet)
 // IsInitialBlockDownload() reads nMinimumChainWork from the tier at the tip
 // height (validation.cpp), so the pin is read at heights in every tier: a value
 // assigned after the tier copies in CMainParams would leave the tiers at 0x00
-// and the pin inert. The assumed-valid block is read the same way.
+// and the pin inert. defaultAssumeValid is read once at startup from tier 0
+// (init.cpp, the -assumevalid default); the test reads it at every tier so the
+// two pins stay in step.
 BOOST_AUTO_TEST_CASE(mainnet_ibd_thresholds_pinned_on_every_tier)
 {
     SelectParams(CBaseChainParams::MAIN);
@@ -255,7 +257,7 @@ BOOST_AUTO_TEST_CASE(mainnet_ibd_thresholds_pinned_on_every_tier)
 // checkpoint refuses every header below that height (ContextualCheckBlockHeader,
 // bad-fork-prior-to-checkpoint); a hash absent from the chain is inert. The last
 // checkpoint sits below the assumed-valid block, so a node that holds the
-// assumed-valid block holds it. The other networks keep genesis only.
+// assumed-valid block holds it. The other networks keep one entry at height 0.
 BOOST_AUTO_TEST_CASE(mainnet_checkpoints_pinned)
 {
     SelectParams(CBaseChainParams::MAIN);
@@ -285,6 +287,8 @@ BOOST_AUTO_TEST_CASE(mainnet_checkpoints_pinned)
         BOOST_CHECK_EQUAL(other.count(0), 1u);
         if (net != CBaseChainParams::TESTNET) {
             BOOST_CHECK(other.at(0) == Params().GetConsensus(0).hashGenesisBlock);
+        } else {
+            BOOST_CHECK(other.at(0) != Params().GetConsensus(0).hashGenesisBlock);
         }
     }
 }

@@ -211,7 +211,7 @@ Keep `debug.log` and tell us in the Telegram channel which release file you down
 
 ## Updates in the first weeks
 
-A release after launch may add checkpoints so that a new node syncing from scratch follows the launched chain. Stay on the current release. The release notes will say when you need an update to stay in sync.
+A release after launch pins the chain's history: a minimum chain work a node must reach before it leaves initial block download, an assumed-valid block, and checkpoints below which a node that holds them accepts no fork. Stay on the current release. The release notes will say when you need an update to stay in sync.
 
 ## Practicing on stagenet
 
