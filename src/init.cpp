@@ -973,6 +973,14 @@ bool AppInitParameterInteraction()
         LogPrintf("Assuming ancestors of block %s have valid signatures.\n", hashAssumeValid.GetHex());
     else
         LogPrintf("Validating signatures for all blocks.\n");
+    {
+        const MapCheckpoints& checkpoints = chainparams.Checkpoints().mapCheckpoints;
+        LogPrintf("Checkpoints %s: %u, the last at height %d (%s); minimum chain work %s.\n",
+                  fCheckpointsEnabled ? "enabled" : "disabled", checkpoints.size(),
+                  checkpoints.empty() ? -1 : checkpoints.rbegin()->first,
+                  checkpoints.empty() ? std::string("none") : checkpoints.rbegin()->second.GetHex(),
+                  chainparams.GetConsensus(0).nMinimumChainWork.GetHex());
+    }
 
     // mempool limits
     int64_t nMempoolSizeMax = GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000;

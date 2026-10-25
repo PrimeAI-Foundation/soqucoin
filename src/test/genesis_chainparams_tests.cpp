@@ -191,32 +191,105 @@ BOOST_AUTO_TEST_CASE(bip34_height_safety_testnet3)
     BOOST_CHECK_GT(consensus.BIP34Height, 16);
 }
 
-BOOST_AUTO_TEST_CASE(launch_ibd_thresholds_are_zero_on_every_network)
+// nMinimumChainWork is an IBD heuristic, and IsInitialBlockDownload() gates
+// the work-serving RPCs (getblocktemplate exempts only stagenet/regtest;
+// AuxMiningCheck only regtest). An unreachable value latches every fresh
+// mainnet node in IBD and no node can serve mining work. Mainnet shipped 0x00 at
+// launch for that reason (the inherited upstream pin had done exactly that
+// until it was driven on 2026-08-29); the first release after block 1 pins
+// the work of a block every synced node holds, read from a live mainnet node
+// (doc/release-process.md). The networks without a pinned history stay 0x00.
+static const char* const kMainnetMinimumChainWork =
+    "0000000000000000000000000000000000000000000000018dae9d20b7e97573";
+static const char* const kMainnetAssumeValid =
+    "ee1f94bbd80f12a3beb85a11aeda94581529e261389fadeb712d37c11c333b7e";
+static const int kMainnetAssumeValidHeight = 19513;
+
+BOOST_AUTO_TEST_CASE(ibd_thresholds_are_zero_off_mainnet)
 {
-    // nMinimumChainWork is an IBD heuristic, and IsInitialBlockDownload()
-    // gates the work-serving RPCs (getblocktemplate exempts only
-    // stagenet/regtest; AuxMiningCheck exempts nothing). An unreachable
-    // value therefore latches every fresh node in IBD and no node can serve
-    // mining work: the chain never leaves height 0. Mainnet shipped exactly
-    // that (the upstream pin for upstream block 5,050,000) until the Phase A
-    // pre-launch audit drove it on 2026-08-29. Both fields stay 0x00 until a
-    // post-launch release re-pins them from a live Soqucoin mainnet node
-    // (doc/release-process.md).
     const std::map<std::string, std::string> networks = {
-        {CBaseChainParams::MAIN, "main"},
         {CBaseChainParams::TESTNET, "test"},
         {CBaseChainParams::REGTEST, "regtest"},
         {CBaseChainParams::STAGENET, "stagenet"},
     };
+    // The heights reach every tier of the three networks: regtest's tiers start
+    // at 10 and 20, stagenet's at 1, 100 and 100,000.
     for (const auto& net : networks) {
         SelectParams(net.first);
-        const Consensus::Params& consensus = Params().GetConsensus(0);
-        BOOST_CHECK_MESSAGE(consensus.nMinimumChainWork == uint256S("0x00"),
-            net.second + ": nMinimumChainWork must be zero pre-launch, got " +
+        for (uint32_t h : {0u, 1u, 10u, 20u, 100u, 100000u, 1000000u}) {
+            const Consensus::Params& consensus = Params().GetConsensus(h);
+            BOOST_CHECK_MESSAGE(consensus.nMinimumChainWork.IsNull(),
+                net.second + " at " + std::to_string(h) + ": nMinimumChainWork is " +
+                consensus.nMinimumChainWork.ToString());
+            BOOST_CHECK_MESSAGE(consensus.defaultAssumeValid.IsNull(),
+                net.second + " at " + std::to_string(h) + ": defaultAssumeValid is " +
+                consensus.defaultAssumeValid.ToString());
+        }
+    }
+}
+
+// IsInitialBlockDownload() reads nMinimumChainWork from the tier at the tip
+// height (validation.cpp), so the pin is read at heights in every tier: a value
+// assigned after the tier copies in CMainParams would leave the tiers at 0x00
+// and the pin inert. defaultAssumeValid is read once at startup from tier 0
+// (init.cpp, the -assumevalid default); the test reads it at every tier so the
+// two pins stay in step.
+BOOST_AUTO_TEST_CASE(mainnet_ibd_thresholds_pinned_on_every_tier)
+{
+    SelectParams(CBaseChainParams::MAIN);
+    const uint256 work = uint256S(kMainnetMinimumChainWork);
+    const uint256 assumeValid = uint256S(kMainnetAssumeValid);
+    BOOST_CHECK(!work.IsNull());
+    BOOST_CHECK(!assumeValid.IsNull());
+    for (uint32_t h : {0u, 1u, 1502u, 2029u, 19513u, 100000u, 1000000u}) {
+        const Consensus::Params& consensus = Params().GetConsensus(h);
+        BOOST_CHECK_MESSAGE(consensus.nMinimumChainWork == work,
+            "main at " + std::to_string(h) + ": nMinimumChainWork is " +
             consensus.nMinimumChainWork.ToString());
-        BOOST_CHECK_MESSAGE(consensus.defaultAssumeValid == uint256S("0x00"),
-            net.second + ": defaultAssumeValid must be zero pre-launch, got " +
+        BOOST_CHECK_MESSAGE(consensus.defaultAssumeValid == assumeValid,
+            "main at " + std::to_string(h) + ": defaultAssumeValid is " +
             consensus.defaultAssumeValid.ToString());
+    }
+}
+
+// The mainnet checkpoints: genesis, block 1 and the two heights at which the
+// network opened to public peers. A node that holds the block at the last
+// checkpoint refuses every header below that height (ContextualCheckBlockHeader,
+// bad-fork-prior-to-checkpoint); a hash absent from the chain is inert. The last
+// checkpoint sits below the assumed-valid block, so a node that holds the
+// assumed-valid block holds it. The other networks keep one entry at height 0.
+BOOST_AUTO_TEST_CASE(mainnet_checkpoints_pinned)
+{
+    SelectParams(CBaseChainParams::MAIN);
+    const MapCheckpoints& checkpoints = Params().Checkpoints().mapCheckpoints;
+    const MapCheckpoints expected = {
+        {0, Params().GetConsensus(0).hashGenesisBlock},
+        {1, uint256S("0f810805571d662db8146f869b3dc6b9fa9212a4cc3c3b11f18f03b856cffee1")},
+        {1502, uint256S("e8820618a5fe88a67681873ba3d3dcf5143d28e3aadb2bde04f60187ec21ec56")},
+        {2029, uint256S("47b089ca1dc89cc5494a29575f410f8e44eea6e09aac56161fb403a1119ab600")},
+    };
+    BOOST_CHECK(checkpoints == expected);
+    std::set<uint256> hashes;
+    for (const auto& checkpoint : checkpoints) {
+        BOOST_CHECK(!checkpoint.second.IsNull());
+        hashes.insert(checkpoint.second);
+    }
+    BOOST_CHECK_EQUAL(hashes.size(), checkpoints.size());
+    BOOST_CHECK_LT(checkpoints.rbegin()->first, kMainnetAssumeValidHeight);
+
+    // Regtest and stagenet checkpoint their genesis hash. Testnet's single entry
+    // is an inherited literal at height 0 that is not its genesis hash, so it is
+    // never found in the block index and the checkpoint rule is inert there.
+    for (const std::string& net : {CBaseChainParams::TESTNET, CBaseChainParams::REGTEST, CBaseChainParams::STAGENET}) {
+        SelectParams(net);
+        const MapCheckpoints& other = Params().Checkpoints().mapCheckpoints;
+        BOOST_CHECK_EQUAL(other.size(), 1u);
+        BOOST_CHECK_EQUAL(other.count(0), 1u);
+        if (net != CBaseChainParams::TESTNET) {
+            BOOST_CHECK(other.at(0) == Params().GetConsensus(0).hashGenesisBlock);
+        } else {
+            BOOST_CHECK(other.at(0) != Params().GetConsensus(0).hashGenesisBlock);
+        }
     }
 }
 

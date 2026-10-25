@@ -413,19 +413,22 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_V6_CONTROLFLOW].nActivationHeight   = Consensus::BIP9Deployment::NOT_SCHEDULED;
 
 
-        // The best chain should have at least this much work. Zero for launch:
-        // this field is an IBD heuristic, and IsInitialBlockDownload() gates the
-        // work-serving RPCs (getblocktemplate exempts only stagenet/regtest;
-        // AuxMiningCheck exempts nothing), so any unreachable value here means a
-        // fresh mainnet can never serve mining work and never leaves height 0.
-        // The inherited upstream pin (chainwork at upstream block 5,050,000) did
-        // exactly that; found and driven 2026-08-29 (Phase A pre-launch audit,
-        // lane A1). Re-pin to real accumulated work in post-launch releases as
-        // part of the checkpoint-update routine (doc/release-process.md).
-        consensus.nMinimumChainWork = uint256S("0x00");
+        // The best chain should have at least this much work: the chain work of
+        // mainnet block 19,513, the assumed-valid block below, read from a live
+        // mainnet node on 2026-10-25. This field is an IBD heuristic, and
+        // IsInitialBlockDownload() gates the work-serving RPCs (getblocktemplate
+        // exempts only stagenet/regtest; AuxMiningCheck only regtest), so an
+        // unreachable value here means no mainnet node can serve mining work. The chain
+        // shipped 0x00 at launch for that reason: the inherited upstream pin had
+        // latched every fresh node in IBD (found 2026-08-29). Re-pin from a live
+        // node with each release (doc/release-process.md); the value must be the
+        // work of a block every synced node holds, never a projection.
+        consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000018dae9d20b7e97573");
 
-        // By default assume that the signatures in ancestors of this block are valid.
-        consensus.defaultAssumeValid = uint256S("0x00");
+        // By default assume that the signatures in ancestors of this block are
+        // valid: mainnet block 19,513, two blocks below the tip when read from a
+        // live mainnet node on 2026-10-25 (doc/release-process.md).
+        consensus.defaultAssumeValid = uint256S("0xee1f94bbd80f12a3beb85a11aeda94581529e261389fadeb712d37c11c333b7e");
 
         // Block-1 launch time gate (bead w3y1): the block at height 1 must carry
         // nTime >= 2026-10-13T15:00:00Z, the launch hour. Set
@@ -669,11 +672,18 @@ public:
         fRequireStandard = true;
         fMineBlocksOnDemand = false;
 
-        // Mainnet checkpoints — genesis only (updated after genesis re-mine)
-        // Additional checkpoints will be added as the chain matures
+        // Mainnet checkpoints: genesis, block 1, and the two heights at which the
+        // network opened to public peers (1,502 on 2026-10-14 and 2,029 on
+        // 2026-10-15), the hashes read from a live mainnet node on 2026-10-25.
+        // A node that holds the block at the last checkpoint refuses every header
+        // below that height (ContextualCheckBlockHeader, bad-fork-prior-to-
+        // checkpoint); a hash absent from the chain is inert.
         checkpointData = (CCheckpointData){
             boost::assign::map_list_of
                 (0, consensus.hashGenesisBlock)
+                (1, uint256S("0x0f810805571d662db8146f869b3dc6b9fa9212a4cc3c3b11f18f03b856cffee1"))
+                (1502, uint256S("0xe8820618a5fe88a67681873ba3d3dcf5143d28e3aadb2bde04f60187ec21ec56"))
+                (2029, uint256S("0x47b089ca1dc89cc5494a29575f410f8e44eea6e09aac56161fb403a1119ab600"))
         };
 
         // Mainnet chain transaction data — fresh chain, no history yet
