@@ -212,9 +212,11 @@ BOOST_AUTO_TEST_CASE(ibd_thresholds_are_zero_off_mainnet)
         {CBaseChainParams::REGTEST, "regtest"},
         {CBaseChainParams::STAGENET, "stagenet"},
     };
+    // The heights reach every tier of the three networks: regtest's tiers start
+    // at 10 and 20, stagenet's at 1, 100 and 100,000.
     for (const auto& net : networks) {
         SelectParams(net.first);
-        for (uint32_t h : {0u, 1u, 100000u, 1000000u}) {
+        for (uint32_t h : {0u, 1u, 10u, 20u, 100u, 100000u, 1000000u}) {
             const Consensus::Params& consensus = Params().GetConsensus(h);
             BOOST_CHECK_MESSAGE(consensus.nMinimumChainWork.IsNull(),
                 net.second + " at " + std::to_string(h) + ": nMinimumChainWork is " +
